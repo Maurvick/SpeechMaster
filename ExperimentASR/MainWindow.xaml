@@ -1,0 +1,33 @@
+﻿<Window x:Class="ExperimentASR.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ExperimentASR"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal">
+            <TextBox x:Name="AudioPath" Width="300" Margin="0,0,10,0"/>
+            <Button Width="100" Content="Обрати..." Click="SelectFile_Click"/>
+        </StackPanel>
+
+        <Button Grid.Row="1" 
+                Content="Розпізнати"
+                Margin="0,10,0,10"
+                Height="35"
+                Click="Transcribe_Click"/>
+
+        <TextBox Grid.Row="2"
+                 x:Name="OutputBox"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"
+                 AcceptsReturn="True"/>
+    </Grid>
+</Window>
