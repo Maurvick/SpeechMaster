@@ -16,11 +16,12 @@
         <StackPanel Orientation="Horizontal">
             <TextBox x:Name="AudioPath" Width="300" Margin="0,0,10,0"/>
             <Button Width="100" Content="Обрати..." Click="SelectFile_Click"/>
+            <Label x:Name="lblTranscriptStatus" Content="...Idle" Margin="0,0,10,0"/>
         </StackPanel>
 
-        <Button Grid.Row="1" 
+        <Button x:Name="btnStartTranscribe" Grid.Row="1" 
                 Content="Розпізнати"
-                Margin="0,10,0,10"
+                Margin="0,10,390,10"
                 Height="35"
                 Click="Transcribe_Click"/>
 
@@ -29,5 +30,10 @@
                  TextWrapping="Wrap"
                  VerticalScrollBarVisibility="Auto"
                  AcceptsReturn="True"/>
+        <Button x:Name="btnCancelTranscribe" Grid.Row="1" 
+            Content="Відмінити"
+            Margin="395,10,0,10"
+            Height="35"
+            Click="Transcribe_Click"/>
     </Grid>
 </Window>

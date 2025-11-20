@@ -1,5 +1,6 @@
 ﻿using ExperimentASR.Services;
 using Microsoft.Win32;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -45,11 +46,61 @@ namespace ExperimentASR
             }
 
             OutputBox.Text = "Зачекайте, аналіз триває...";
+            lblTranscriptStatus.Content = "Working...";
+            lblTranscriptStatus.Foreground = Brushes.Orange;
 
-            // запуск розпізнавання у окремому потоці
-            var result = await Task.Run(() => _transcriber.Transcribe(file));
 
-            OutputBox.Text = result.Message;
+            try
+            {
+                // запуск розпізнавання у окремому потоці
+                var result = await Task.Run(() => _transcriber.Transcribe(file));
+
+                if (result == null)
+                {
+                    var msg = "Результат відсутній.";
+                    MessageBox.Show(msg, "Помилка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    OutputBox.Text = msg;
+                    return;
+                }
+
+                if (!string.IsNullOrWhiteSpace(result.Transcript))
+                {
+                    OutputBox.Text = result.Transcript;
+                }
+                else
+                {
+                    // If Transcriber sets Message on failure, show it; otherwise show fallback
+                    var msg = result.Message ?? "Під час розпізнавання сталася помилка.";
+                    MessageBox.Show(msg, "Помилка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    OutputBox.Text = msg;
+                }
+            }
+            catch (FileNotFoundException fnfEx)
+            {
+                // e.g. audio file not found
+                var msg = $"Файл не знайдено: {fnfEx.Message}";
+                MessageBox.Show(msg, "Файл не знайдено", MessageBoxButton.OK, MessageBoxImage.Error);
+                OutputBox.Text = msg;
+            }
+            catch (System.ComponentModel.Win32Exception winEx)
+            {
+                // e.g. python executable not found or cannot be started
+                var msg = $"Не вдалося запустити зовнішню програму: {winEx.Message}";
+                MessageBox.Show(msg, "Помилка запуску", MessageBoxButton.OK, MessageBoxImage.Error);
+                OutputBox.Text = msg;
+            }
+            catch (Exception ex)
+            {
+                // Generic fallback
+                var msg = $"Помилка під час розпізнавання: {ex.Message}";
+                MessageBox.Show(msg, "Помилка", MessageBoxButton.OK, MessageBoxImage.Error);
+                OutputBox.Text = msg;
+            }
+        }
+
+        private void btnCancelTranscribe_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }
