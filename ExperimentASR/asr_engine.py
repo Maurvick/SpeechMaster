@@ -3,6 +3,9 @@ from google.cloud import speech
 import sys
 import json
 import jiwer
+from deepspeech import Model
+import numpy as np
+import wave
 
 from whisper import transcribe
 
@@ -25,26 +28,39 @@ whisper_model = {
     4: "large"
 }
 
+
 def transcribe_google(audio_file_path):
     client = speech.SpeechClient()
-
     with open(audio_file_path, "rb") as f:
         audio = speech.RecognitionAudio(content=f.read())
-
     config = speech.RecognitionConfig(
         language_code="uk-UA",
         enable_automatic_punctuation=True
     )
-
     response = client.recognize(config=config, audio=audio)
-
     result_text = ""
     for result in response.results:
         result_text += result.alternatives[0].transcript + " "
-
     return result_text.strip()
 
-def transcribe_audio(file_path, lang="en"):
+
+def transcribe_deepspeech(file_path):
+    # Initialize model (calls DS_CreateModel internally)
+    model = Model('deepspeech-0.9.3-models.pbmm')
+    model.enableExternalScorer('deepspeech-0.9.3-models.scorer')
+    # Load audio file
+    with wave.open('audio_file.wav', 'rb') as w:
+        rate = w.getframerate()
+        frames = w.getnframes()
+        buffer = w.readframes(frames)
+    # Convert audio to numpy array
+    audio = np.frombuffer(buffer, np.int16)
+    # Perform speech recognition (calls DS_STT internally)
+    text = model.stt(audio)
+    print(text)
+
+
+def transcribe_whisper(file_path, lang="en"):
     print(json.dumps({
     "status": "info",
     "message": f'Initiating {file_path} transcription...'
@@ -66,7 +82,7 @@ def evaluate_wer_cer(reference_text, recognized_text):
     cer = jiwer.cer(reference_text, recognized_text)
     return wer, cer
 
-transcript = transcribe_audio(url, lang)
+transcript = transcribe_whisper(url, lang)
 
 print(json.dumps({
     "status": "ok",

@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="asr.py">
+    <None Update="asr_engine.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
