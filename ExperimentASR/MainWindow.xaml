@@ -6,8 +6,9 @@
         xmlns:local="clr-namespace:ExperimentASR"
         mc:Ignorable="d"
         TextOptions.TextFormattingMode="Display" SnapsToDevicePixels="True"
-		FontFamily="Candara" FontSize="16" ShowInTaskbar="True"
         Background="#F1F1F1" Foreground="#262626"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        ui:WindowHelper.UseModernWindowStyle="True"
         Title="Transcription Window" Height="450" Width="800">
 
     <Window.Resources>
@@ -16,39 +17,58 @@
             <Setter Property="IsChecked" Value="True"/>
         </Style>
     </Window.Resources>
-    
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <TextBox x:Name="AudioPath" Width="300" HorizontalAlignment="Left" 
-             Margin="10,0,0,0" IsReadOnly="True"/>
-            <Button Width="100" Content="Обрати..." HorizontalAlignment="Left" 
-            Margin="320,0,0,0" Click="SelectFile_Click"/>
-            <Label x:Name="lblTranscriptStatus" Content="...Idle" HorizontalAlignment="Left" 
-           Margin="722,0,0,0"/>
-        </Grid>
+    <DockPanel LastChildFill="True">
+        <!-- Menu Bar docked to the Top -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Import" />
+                <Separator />
+                <MenuItem Header="E_xit" />
+            </MenuItem>
+            <MenuItem Header="_Edit" />
+            <MenuItem Header="_Help" />
+        </Menu>
 
-        <Button x:Name="btnStartTranscribe" Grid.Row="1" 
-                Content="Розпізнати"
-                Margin="0,10,390,10"
+        <!-- Status Bar docked to the Bottom -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock Text="Ready" />
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <TextBlock Text="Item Count: 0" />
+            </StatusBarItem>
+        </StatusBar>
+        
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0">
+                <TextBox x:Name="AudioPath" Width="300" HorizontalAlignment="Left" IsReadOnly="True"/>
+                <Button Width="100" Content="Обрати..." HorizontalAlignment="Left" 
+                Margin="320,0,0,0" Click="SelectFile_Click"/>
+            </Grid>
+            <Button x:Name="btnStartTranscribe" Grid.Row="1" 
+                    Content="Розпізнати"
+                    Margin="5,10,561,10"
+                    Height="35"
+                    Click="Transcribe_Click"/>
+            <TextBox Grid.Row="2"
+                     x:Name="OutputBox"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     AcceptsReturn="True" IsReadOnly="True" Margin="0,32,220,31"/>
+            <Button x:Name="btnCancelTranscribe" Grid.Row="1" 
+                Content="Відмінити"
+                Margin="109,0,0,0"
                 Height="35"
                 Click="Transcribe_Click"/>
-
-        <TextBox Grid.Row="2"
-                 x:Name="OutputBox"
-                 TextWrapping="Wrap"
-                 VerticalScrollBarVisibility="Auto"
-                 AcceptsReturn="True" IsReadOnly="True"/>
-        <Button x:Name="btnCancelTranscribe" Grid.Row="1" 
-            Content="Відмінити"
-            Margin="395,10,0,10"
-            Height="35"
-            Click="Transcribe_Click"/>
-        <StatusBar Grid.Row="2"/>
-    </Grid>
+            <StatusBar x:Name="statusBar" Grid.Row="2" Margin="-9,302,-10,-7"/>
+            <Label x:Name="lblTranscriptStatus" Content="...Idle" HorizontalAlignment="Left" Margin="0,302,0,-6" Grid.Row="2"/>
+        </Grid>
+    </DockPanel>
 </Window>
