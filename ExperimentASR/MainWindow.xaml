@@ -8,97 +8,176 @@
         mc:Ignorable="d"
         ui:WindowHelper.UseModernWindowStyle="True"
         TextOptions.TextFormattingMode="Display" 
-        Title="Transcription Window" Height="450" Width="800">
-
+        Title="Transcription Window" Height="720" Width="1280">
     <Window.Resources>
+        <SolidColorBrush x:Key="AccentBrush" Color="#0057B7"/>
+        <SolidColorBrush x:Key="AccentLightBrush" Color="#FFD700"/>
+
+        <Style x:Key="RoundButtonStyle" TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="60">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="CheckBox">
-            <Setter Property="Margin" Value="10, 13, 10, 10"/>
-            <Setter Property="IsChecked" Value="True"/>
+            <Setter Property="Margin" Value="0, 10, 0, 10"/>
+            <Setter Property="FontSize" Value="14"/>
         </Style>
     </Window.Resources>
 
     <DockPanel LastChildFill="True">
-        <!-- Status Bar docked to the Bottom (Kept Global) -->
+
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem>
                 <TextBlock x:Name="blockStatus" Text="Ready" />
             </StatusBarItem>
             <Separator />
             <StatusBarItem>
-                <TextBlock Text="Item Count: 0" />
+                <ProgressBar Height="10" Width="100"/>
             </StatusBarItem>
         </StatusBar>
 
-        <!-- Main Content: TabControl is now the top-level container in the DockPanel -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Import" />
+                <Separator />
+                <MenuItem Header="E_xit" />
+            </MenuItem>
+            <MenuItem Header="_Edit" />
+            <MenuItem Header="_Service">
+                <MenuItem Header="_Download" />
+            </MenuItem>
+            <MenuItem Header="_Help" />
+        </Menu>
+
         <TabControl>
-            <TabItem Header="Home">
-                <!-- DockPanel added to stack Menu above the Grid within the Tab -->
-                <DockPanel LastChildFill="True">
-                    <!-- Menu Bar moved inside the Home Tab -->
-                    <Menu DockPanel.Dock="Top">
-                        <MenuItem Header="_File">
-                            <MenuItem Header="_Import" />
-                            <Separator />
-                            <MenuItem Header="E_xit" />
-                        </MenuItem>
-                        <MenuItem Header="_Edit" />
-                        <MenuItem Header="_Help" />
-                    </Menu>
+            <TabItem Header="Main">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="280"/>
+                    </Grid.ColumnDefinitions>
 
-                    <!-- Transcription UI -->
-                    <Grid Margin="10">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <!-- File Selection -->
-                            <RowDefinition Height="Auto"/>
-                            <!-- Buttons -->
-                            <RowDefinition Height="*"/>
-                            <!-- Output -->
-                        </Grid.RowDefinitions>
+                    <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1"
+                            CornerRadius="8" Padding="16" Margin="0,0,10,0">
+                        <StackPanel VerticalAlignment="Center">
 
-                        <!-- Row 0: File Selection -->
-                        <Grid Grid.Row="0" Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="AudioPath" Width="300" IsReadOnly="True" VerticalContentAlignment="Center"/>
-                            <Button Grid.Column="1" Content="Обрати..." Width="100" Margin="10,0,0,0" Click="SelectFile_Click"/>
-                        </Grid>
-
-                        <!-- Row 1: Action Buttons -->
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
-                            <Button x:Name="btnStartTranscribe" 
-                                    Content="Розпізнати" 
-                                    Width="100" Height="35" 
+                            <Button x:Name="btnStartTranscribe" Height="120" Width="120" 
+                                    Style="{StaticResource RoundButtonStyle}"
+                                    Background="{StaticResource AccentBrush}"
+                                    Foreground="White" FontSize="48" FontWeight="Bold"
+                                    Content="🎤" 
                                     Click="Transcribe_Click"/>
-                            <Button x:Name="btnCancelTranscribe" 
-                                    Content="Відмінити" 
-                                    Width="100" Height="35" 
-                                    Margin="10,0,0,0" 
-                                    Click="Transcribe_Click"/>
+
+                            <TextBlock Text="Натисніть для запису" 
+                                       HorizontalAlignment="Center" FontSize="16" Margin="0,10,0,10"/>
+
+                            <TextBlock Text="Або оберіть файл:" 
+                                       Margin="0,10,0,5"/>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="AudioPath" IsReadOnly="True" VerticalContentAlignment="Center"/>
+                                <Button Grid.Column="1" Content="📁" Width="40" Margin="5,0,0,0" Click="SelectFile_Click"/>
+                            </Grid>
+
+                            <Button x:Name="btnCancelTranscribe" Content="Відмінити / Стоп" 
+                                    Background="#D32F2F" Foreground="White" Margin="0,10,0,0" Click="Transcribe_Click"/>
+
+                            <Separator Margin="0,20"/>
+
+                            <TextBlock Text="Модель ASR" FontWeight="SemiBold"/>
+                            <ComboBox SelectedIndex="0" Margin="0,5,0,0">
+                                <ComboBoxItem>Whisper large-v3 (GPU)</ComboBoxItem>
+                                <ComboBoxItem>Whisper medium</ComboBoxItem>
+                                <ComboBoxItem>Vosk UA</ComboBoxItem>
+                            </ComboBox>
                         </StackPanel>
+                    </Border>
 
-                        <!-- Row 2: Output -->
-                        <TextBox Grid.Row="2"
-                                 x:Name="OutputBox"
-                                 TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto"
-                                 AcceptsReturn="True" 
-                                 IsReadOnly="True"/>
-                    </Grid>
-                </DockPanel>
+                    <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1"
+                            CornerRadius="8" Padding="20" Margin="5,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox x:Name="OutputBox" 
+                                         TextWrapping="Wrap" AcceptsReturn="True"
+                                         FontSize="18" 
+                                         Background="Transparent"
+                                         BorderThickness="0" IsReadOnly="True"
+                                         Text="Тут з'явиться розпізнаний текст..." />
+                            </ScrollViewer>
+
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                                <Button Content="Copy" Margin="0,0,5,0"/>
+                                <Button Content="Save TXT" Margin="0,0,5,0"/>
+                                <Button Content="Save SRT"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1"
+                            CornerRadius="8" Padding="16" Margin="10,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Waveform" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+                            <Border Height="120" 
+                                    CornerRadius="8">
+                                <TextBlock Text="Waveform Visualizer" 
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+
+                            <TextBlock Text="Таймер:" Margin="0,20,0,0"/>
+                            <TextBlock Text="00:00:00" FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+
+                            <TextBlock Text="Accuracy (WER):" Margin="0,20,0,0"/>
+                            <TextBlock Text="-- %" FontSize="20" Foreground="#4CAF50"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="History">
+                <Grid>
+                    <TextBlock Text="History Log Placeholder" 
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
             </TabItem>
 
             <TabItem Header="Settings">
-                <Grid Background="White">
-                    <TextBlock Text="Settings Page" 
-                               HorizontalAlignment="Center" 
-                               VerticalAlignment="Center" 
-                               Foreground="Gray" 
-                               FontSize="24"/>
+                <Grid Margin="20">
+                    <StackPanel>
+                        <GroupBox Header="Models Configuration" Padding="10">
+                            <StackPanel>
+                                <CheckBox x:Name="checkWhisper" Content="Use Whisper (Local)" IsChecked="False"/>
+                                <CheckBox x:Name="checkGoogleSpeech" Content="Use Google Speech-To-Text (Cloud)" IsChecked="True"/>
+                                <CheckBox x:Name="checkDeepspeech" Content="Use Deepspeech" IsChecked="False"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <TextBlock Text="Additional Settings" 
+                                   Foreground="{StaticResource AccentBrush}" 
+                                   Margin="0,20,0,10" FontWeight="Bold"/>
+                        <CheckBox Content="Enable GPU Acceleration" IsChecked="True"/>
+                        <CheckBox Content="Save audio to disk after recognition" IsChecked="False"/>
+                    </StackPanel>
                 </Grid>
             </TabItem>
+
         </TabControl>
     </DockPanel>
 </Window>

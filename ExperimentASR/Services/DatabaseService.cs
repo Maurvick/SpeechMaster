@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using System.IO;
+using Microsoft.Data.Sqlite;
 
 namespace ExperimentASR.Services
 {
@@ -6,24 +7,29 @@ namespace ExperimentASR.Services
     {
         private readonly string _connectionString = "Data Source=MyNewDatabase.db";
 
-        private void ConnectDB()
+        public async static void InitializeDatabase()
         {
-            try
+            // Fix: Remove ApplicationData usage, use local file path directly
+            string dbFileName = "sqliteSample.db";
+            string dbpath = Path.Combine(Directory.GetCurrentDirectory(), dbFileName);
+
+            if (!File.Exists(dbpath))
             {
-                using (var connection = new SqliteConnection(_connectionString))
-                {
-                    connection.Open();
-                    var command = connection.CreateCommand();
-                    command.CommandText = "CREATE TABLE IF NOT EXISTS Settings (Key TEXT, Value TEXT)";
-                    command.ExecuteNonQuery();
-                }
+                using (File.Create(dbpath)) { }
             }
-            catch (SqliteException ex)
+
+            using (var db = new SqliteConnection($"Filename={dbpath}"))
             {
-                throw new Exception("Database connection failed: " + ex.Message);
+                db.Open();
+
+                string tableCommand = "CREATE TABLE IF NOT " +
+                    "EXISTS MyTable (Primary_Key INTEGER PRIMARY KEY, " +
+                    "Text_Entry NVARCHAR(2048) NULL)";
+
+                var createTable = new SqliteCommand(tableCommand, db);
+
+                createTable.ExecuteReader();
             }
         }
-
-        
     }
 }
