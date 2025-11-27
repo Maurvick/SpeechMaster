@@ -1,6 +1,8 @@
 ﻿using ExperimentASR.Services;
 using Microsoft.Win32;
+using NAudio.Wave;
 using System.IO;
+using System.Security.Policy;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -23,6 +25,7 @@ namespace ExperimentASR
             else
             {
                 textAsrLocation.Text = "ASR Engine Location not found.";
+                textAsrLocation.Foreground = System.Windows.Media.Brushes.Red;
             }
             if (System.Numerics.Vector.IsHardwareAccelerated)
             {
@@ -107,6 +110,32 @@ namespace ExperimentASR
                 boxTranscriptOutput.Text = msg;
             }
         }
+
+        private int GetAudioFileDuration(string filePath)
+        {
+            // Synchronous read so callers get the actual duration
+            using var reader = new AudioFileReader(filePath);
+            TimeSpan duration = reader.TotalTime;
+            return (int)duration.TotalSeconds;
+        }
+
+        //private async void MoveProgress()
+        //{
+        //    durationInSeconds = await Task.Run(() => GetAudioFileDuration(url)).ConfigureAwait(false);
+        //    int audioDurationSeconds = _audioDurationInSeconds;
+        //    if (audioDurationSeconds <= 0) return;
+        //    int smallModelProccessingTime = 12;
+        //    double processingSpeed = audioDurationSeconds / (double)smallModelProccessingTime;
+
+        //    for (int i = 0; i <= audioDurationSeconds; i++)
+        //    {
+        //        int progress = (int)((i / (double)audioDurationSeconds) * 100);
+        //        progressTranscript.Value = Math.Clamp(progress, 0, 100);
+        //        await Task.Delay(Math.Max(1, (int)(100 / processingSpeed)));
+        //    }
+
+        //    await Task.Delay(500);
+        //}
 
         private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
         {

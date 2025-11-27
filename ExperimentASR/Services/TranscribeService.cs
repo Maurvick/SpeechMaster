@@ -1,5 +1,4 @@
 ﻿using ExperimentASR.Models;
-using System;
 using System.IO;
 
 namespace ExperimentASR.Services
