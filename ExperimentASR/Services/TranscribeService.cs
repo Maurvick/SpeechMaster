@@ -5,8 +5,8 @@ namespace ExperimentASR.Services
 {
     public class TranscribeService
     {
-        private readonly string _pythonExe;
-        private readonly string _scriptPath;
+        private readonly string _pythonExe = "python";
+        private readonly string _scriptPath = "./Scripts/asr_engine.py";
         private readonly string _audioLanguage;
         private readonly string _whisperModelSize;
         private string _rawPythonOutput;
@@ -17,11 +17,8 @@ namespace ExperimentASR.Services
         public event EventHandler? TranscriptionStarted;
         public event EventHandler<TranscriptionFinishedEventArgs>? TranscriptionFinished;
 
-        public TranscribeService(string pythonExe = "python", string scriptPath = "./Scripts/asr_engine.py",
-            string audioLanguage = "en", string whisperModelSize = "tiny")
+        public TranscribeService(string audioLanguage = "none", string whisperModelSize = "tiny")
         {
-            _pythonExe = pythonExe;
-            _scriptPath = scriptPath;
             _audioLanguage = audioLanguage;
             _whisperModelSize = whisperModelSize;
         }

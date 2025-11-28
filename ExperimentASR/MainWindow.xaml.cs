@@ -63,9 +63,11 @@ namespace ExperimentASR
             boxTranscriptOutput.Text = "Please wait, analizing file...";
             blockStatus.Text = "Working...";
 
+
+
             try
             {
-                // запуск розпізнавання у окремому потоці
+                // Initiate transcription via TranscribeService
                 var result = await Task.Run(() => transcribeSerivce.Transcribe(file));
 
                 if (result == null)
@@ -119,23 +121,22 @@ namespace ExperimentASR
             return (int)duration.TotalSeconds;
         }
 
-        //private async void MoveProgress()
-        //{
-        //    durationInSeconds = await Task.Run(() => GetAudioFileDuration(url)).ConfigureAwait(false);
-        //    int audioDurationSeconds = _audioDurationInSeconds;
-        //    if (audioDurationSeconds <= 0) return;
-        //    int smallModelProccessingTime = 12;
-        //    double processingSpeed = audioDurationSeconds / (double)smallModelProccessingTime;
+        private async void MoveProgress()
+        {
+            int audioDurationSeconds = await Task.Run(() => GetAudioFileDuration(txtAudioFilePath.Text)).ConfigureAwait(false);
+            if (audioDurationSeconds <= 0) return;
+            int smallModelProccessingTime = 12;
+            double processingSpeed = audioDurationSeconds / (double)smallModelProccessingTime;
 
-        //    for (int i = 0; i <= audioDurationSeconds; i++)
-        //    {
-        //        int progress = (int)((i / (double)audioDurationSeconds) * 100);
-        //        progressTranscript.Value = Math.Clamp(progress, 0, 100);
-        //        await Task.Delay(Math.Max(1, (int)(100 / processingSpeed)));
-        //    }
+            for (int i = 0; i <= audioDurationSeconds; i++)
+            {
+                int progress = (int)((i / (double)audioDurationSeconds) * 100);
+                progressTranscript.Value = Math.Clamp(progress, 0, 100);
+                await Task.Delay(Math.Max(1, (int)(100 / processingSpeed)));
+            }
 
-        //    await Task.Delay(500);
-        //}
+            await Task.Delay(500);
+        }
 
         private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
         {
@@ -180,12 +181,63 @@ namespace ExperimentASR
 
         private void btnSaveTxt_Click(object sender, RoutedEventArgs e)
         {
-
+            // save text to file
+            var sfd = new SaveFileDialog();
+            sfd.Filter = "Text files|*.txt|All files|*.*";
+            if (sfd.ShowDialog() == true)
+            {
+                File.WriteAllText(sfd.FileName, boxTranscriptOutput.Text);
+            }
         }
 
         private void btnSaveSrt_Click(object sender, RoutedEventArgs e)
         {
 
         }
+
+        private void comboModelSelect_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // 1. Safety Check: If the UI hasn't finished loading, these controls are null.
+            if (radioWhisperBase == null) return;
+
+            if (sender is ComboBox comboBox && comboBox.SelectedItem is ComboBoxItem selectedItem)
+            {
+                // 2. Safety Check: Ensure Content isn't null before ToString()
+                if (selectedItem.Content == null) return;
+
+                string selectedModel = selectedItem.Content.ToString();
+
+                if (selectedModel == "Whisper")
+                {
+                    radioWhisperBase.IsEnabled = true;
+                    radioWhisperTiny.IsEnabled = true;
+                    radioWhisperSmall.IsEnabled = true;
+                    radioWhisperMedium.IsEnabled = true;
+                }
+                else
+                {
+                    // Optional: logic to disable them if not Whisper
+                    radioWhisperBase.IsEnabled = false;
+                    radioWhisperTiny.IsEnabled = false;
+                    radioWhisperSmall.IsEnabled = false;
+                    radioWhisperMedium.IsEnabled = false;
+                }
+            }
+        }
+
+        private void MoreOptions_Click(object sender, RoutedEventArgs e)
+        {
+            // Initialize your other window (ensure you have created 'DetailsWindow.xaml')
+            
+
+            // Use .Show() to open it and let the user click back to the main window
+            
+
+            // OR use .ShowDialog() to force the user to close the new window 
+            // before returning to the main one (good for settings/modals)
+            // detailsWindow.ShowDialog();
+        }
+
+      
     }
 }
