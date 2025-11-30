@@ -13,7 +13,7 @@
     <Window.Resources>
         <SolidColorBrush x:Key="AccentBrush" Color="#0057B7"/>
         <SolidColorBrush x:Key="AccentLightBrush" Color="#FFD700"/>
-
+        <!-- Styles for Big Play Button -->
         <Style x:Key="RoundButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="Template">
                 <Setter.Value>
@@ -24,11 +24,6 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>
-
-        <Style TargetType="{x:Type CheckBox}">
-            <Setter Property="Margin" Value="0, 10, 0, 10"/>
-            <Setter Property="FontSize" Value="14"/>
         </Style>
     </Window.Resources>
 

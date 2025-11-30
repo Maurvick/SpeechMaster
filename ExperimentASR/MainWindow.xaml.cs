@@ -1,6 +1,7 @@
 ﻿using ExperimentASR.Services;
 using Microsoft.Win32;
 using NAudio.Wave;
+using System.Diagnostics;
 using System.IO;
 using System.Security.Policy;
 using System.Windows;
@@ -35,6 +36,7 @@ namespace ExperimentASR
             {
                 txtGPUAcceleration.Text = "GPU Acceleration: No";
             }
+            GetFFMPEGLocation();
 
             // Subscribe to service events
             transcribeSerivce.TranscriptionStarted += TranscribeService_TranscriptionStarted;
@@ -119,6 +121,30 @@ namespace ExperimentASR
             using var reader = new AudioFileReader(filePath);
             TimeSpan duration = reader.TotalTime;
             return (int)duration.TotalSeconds;
+        }
+
+        private void GetFFMPEGLocation()
+        {
+            try
+            {
+                ProcessStartInfo processStartInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = "/C set", // This command lists all env vars
+                    UseShellExecute = false, // Must be false to modify Environment
+                    RedirectStandardOutput = true
+                };
+                MessageBox.Show(processStartInfo.Environment.Values.ToString());
+                if (processStartInfo.Environment.ContainsKey("FFMPEG"))
+                {
+                    
+                    txtFFMPEGPath.Text = "FFMPEG Path: " + processStartInfo.Environment["FFMPEG"];
+                }
+            }
+            catch
+            {
+                return;
+            }
         }
 
         private async void UpdateProgressBar()
