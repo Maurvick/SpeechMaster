@@ -14,6 +14,7 @@
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Python.Runtime.NETStandard" Version="3.7.1" />
     <PackageReference Include="pythonnet_netstandard_py37_win" Version="2.5.2" />
+    <PackageReference Include="Vanara.PInvoke.Wer" Version="4.2.1" />
     <PackageReference Include="Vosk" Version="0.3.38" />
   </ItemGroup>
 

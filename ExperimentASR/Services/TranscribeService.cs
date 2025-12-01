@@ -7,8 +7,11 @@ namespace ExperimentASR.Services
     {
         private readonly string _pythonExe = "python";
         private readonly string _scriptPath = "./Scripts/asr_engine.py";
-        private readonly TranscribeOptions.AudioLanguage _audioLanguage;
-        private readonly TranscribeOptions.WhisperModelSize _whisperModelSize;
+        private readonly string _whisperModelSize;
+        private readonly string _audioLanguage;
+        private readonly string _asrEngine;
+
+        // Store raw output for error reporting
         private string _rawPythonOutput = "";
 
         // Events
@@ -17,38 +20,29 @@ namespace ExperimentASR.Services
 
         public TranscribeService()
         {
-
+            SettingsManager settings = new SettingsManager();
+            _whisperModelSize = settings.WhisperModelSize;
+            _audioLanguage = settings.AudioLanguage;
+            _asrEngine = settings.AsrEngine;
         }
 
         public string AsrEngineLocation
         {
             get { return _scriptPath; }
         }
-
-        public TranscriptionResult Transcribe(string audioPath)
+        // todo: support flags and parameters
+        private TranscriptionResult RunCommand(string filePath, string model, 
+            string size, string language)
         {
-            if (!File.Exists(audioPath))
-            {
-                throw new FileNotFoundException("Audio file not found.", audioPath);
-            }
-            if (!File.Exists(_scriptPath))
-            {
-                throw new FileNotFoundException("asr.py not found.", _scriptPath);
-            }
-
             var processStartInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = _pythonExe,
-                Arguments = $"\"{_scriptPath}\" \"{audioPath}\" \"{_audioLanguage}\"",
+                Arguments = $"\"{_scriptPath}\" \"{filePath}\" \"{model}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-
-            // Signal transcription start
-            TranscriptionStarted?.Invoke(this, EventArgs.Empty);
-
             using (var process = new System.Diagnostics.Process { StartInfo = processStartInfo })
             {
                 try
@@ -79,6 +73,22 @@ namespace ExperimentASR.Services
                     return errorResult;
                 }
             }
+        
+        }
+
+        public TranscriptionResult Transcribe(string audioPath)
+        {
+            if (!File.Exists(audioPath))
+            {
+                throw new FileNotFoundException("Audio file not found.", audioPath);
+            }
+            if (!File.Exists(_scriptPath))
+            {
+                throw new FileNotFoundException("asr.py not found.", _scriptPath);
+            }
+            // Signal transcription start
+            TranscriptionStarted?.Invoke(this, EventArgs.Empty);
+            return RunCommand(audioPath, _whisperModelSize, _audioLanguage);
         }
     }
 }

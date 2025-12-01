@@ -1,6 +1,8 @@
-﻿using ExperimentASR.Services;
+﻿using ExperimentASR.Models;
+using ExperimentASR.Services;
 using Microsoft.Win32;
 using NAudio.Wave;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Policy;
@@ -14,14 +16,19 @@ namespace ExperimentASR
     /// </summary>
     public partial class MainWindow : Window
     {
-        private TranscribeService transcribeSerivce = new TranscribeService();
+        private readonly TranscribeService _transcribeSerivce = new TranscribeService();
+        private readonly DatasetReader _datasetReader = new(); // або HuggingFaceDatasetLoader
 
         public MainWindow()
         {
             InitializeComponent();
-            if (File.Exists(transcribeSerivce.AsrEngineLocation))
+        }
+
+        private void GetAsrEngineLocation()
+        {
+            if (File.Exists(_transcribeSerivce.AsrEngineLocation))
             {
-                textAsrLocation.Text = "ASR Engine Location found: " + transcribeSerivce.AsrEngineLocation;
+                textAsrLocation.Text = "ASR Engine Location found: " + _transcribeSerivce.AsrEngineLocation;
             }
             else
             {
@@ -36,11 +43,80 @@ namespace ExperimentASR
             {
                 txtGPUAcceleration.Text = "GPU Acceleration: No";
             }
-            GetFFMPEGLocation();
+        }
 
+        private void GetFFMPEGLocation()
+        {
+            try
+            {
+                ProcessStartInfo processStartInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = "/C set", // This command lists all env vars
+                    UseShellExecute = false, // Must be false to modify Environment
+                    RedirectStandardOutput = true
+                };
+
+                if (processStartInfo.Environment.ContainsKey("FFMPEG"))
+                {
+
+                    txtFFMPEGPath.Text = "FFMPEG Path: " + processStartInfo.Environment["FFMPEG"];
+                }
+            }
+            catch
+            {
+                return;
+            }
+        }
+
+        private async void UpdateProgressBar()
+        {
+            int audioDurationSeconds = await Task.Run(() => AudioHelper.GetAudioFileDuration(txtAudioFilePath.Text)).ConfigureAwait(false);
+            if (audioDurationSeconds <= 0) return;
+            int smallModelProccessingTime = 12;
+            double processingSpeed = audioDurationSeconds / (double)smallModelProccessingTime;
+
+            for (int i = 0; i <= audioDurationSeconds; i++)
+            {
+                int progress = (int)((i / (double)audioDurationSeconds) * 100);
+                progressTranscript.Value = Math.Clamp(progress, 0, 100);
+                await Task.Delay(Math.Max(1, (int)(100 / processingSpeed)));
+            }
+
+            await Task.Delay(500);
+        }
+
+        private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
+        {
+            // Marshals to UI thread and start indeterminate progress
+            Dispatcher.Invoke(() =>
+            {
+                progressTranscript.IsIndeterminate = true;
+                progressTranscript.Visibility = Visibility.Visible;
+                StatusText.Text = "Transcribing...";
+            });
+        }
+
+        private void TranscribeService_TranscriptionFinished(object? sender, Models.TranscriptionFinishedEventArgs e)
+        {
+            // Marshals to UI thread and stop progress
+            Dispatcher.Invoke(() =>
+            {
+                progressTranscript.IsIndeterminate = false;
+                progressTranscript.Value = 0;
+                progressTranscript.Visibility = Visibility.Visible;
+                StatusText.Text = "Ready";
+            });
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Check tools availability
+            GetAsrEngineLocation();
+            GetFFMPEGLocation();
             // Subscribe to service events
-            transcribeSerivce.TranscriptionStarted += TranscribeService_TranscriptionStarted;
-            transcribeSerivce.TranscriptionFinished += TranscribeService_TranscriptionFinished;
+            _transcribeSerivce.TranscriptionStarted += TranscribeService_TranscriptionStarted;
+            _transcribeSerivce.TranscriptionFinished += TranscribeService_TranscriptionFinished;
         }
 
         private void SelectFile_Click(object sender, RoutedEventArgs e)
@@ -63,14 +139,12 @@ namespace ExperimentASR
             }
 
             boxTranscriptOutput.Text = "Please wait, analizing file...";
-            blockStatus.Text = "Working...";
-
-
+            StatusText.Text = "Working...";
 
             try
             {
                 // Initiate transcription via TranscribeService
-                var result = await Task.Run(() => transcribeSerivce.Transcribe(file));
+                var result = await Task.Run(() => _transcribeSerivce.Transcribe(file));
 
                 if (result == null)
                 {
@@ -115,84 +189,7 @@ namespace ExperimentASR
             }
         }
 
-        private int GetAudioFileDuration(string filePath)
-        {
-            // Synchronous read so callers get the actual duration
-            using var reader = new AudioFileReader(filePath);
-            TimeSpan duration = reader.TotalTime;
-            return (int)duration.TotalSeconds;
-        }
-
-        private void GetFFMPEGLocation()
-        {
-            try
-            {
-                ProcessStartInfo processStartInfo = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = "/C set", // This command lists all env vars
-                    UseShellExecute = false, // Must be false to modify Environment
-                    RedirectStandardOutput = true
-                };
-                MessageBox.Show(processStartInfo.Environment.Values.ToString());
-                if (processStartInfo.Environment.ContainsKey("FFMPEG"))
-                {
-                    
-                    txtFFMPEGPath.Text = "FFMPEG Path: " + processStartInfo.Environment["FFMPEG"];
-                }
-            }
-            catch
-            {
-                return;
-            }
-        }
-
-        private async void UpdateProgressBar()
-        {
-            int audioDurationSeconds = await Task.Run(() => GetAudioFileDuration(txtAudioFilePath.Text)).ConfigureAwait(false);
-            if (audioDurationSeconds <= 0) return;
-            int smallModelProccessingTime = 12;
-            double processingSpeed = audioDurationSeconds / (double)smallModelProccessingTime;
-
-            for (int i = 0; i <= audioDurationSeconds; i++)
-            {
-                int progress = (int)((i / (double)audioDurationSeconds) * 100);
-                progressTranscript.Value = Math.Clamp(progress, 0, 100);
-                await Task.Delay(Math.Max(1, (int)(100 / processingSpeed)));
-            }
-
-            await Task.Delay(500);
-        }
-
-        private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
-        {
-            // Marshals to UI thread and start indeterminate progress
-            Dispatcher.Invoke(() =>
-            {
-                progressTranscript.IsIndeterminate = true;
-                progressTranscript.Visibility = Visibility.Visible;
-                blockStatus.Text = "Transcribing...";
-            });
-        }
-
-        private void TranscribeService_TranscriptionFinished(object? sender, Models.TranscriptionFinishedEventArgs e)
-        {
-            // Marshals to UI thread and stop progress
-            Dispatcher.Invoke(() =>
-            {
-                progressTranscript.IsIndeterminate = false;
-                progressTranscript.Value = 0;
-                progressTranscript.Visibility = Visibility.Visible;
-                blockStatus.Text = "Ready";
-            });
-        }
-
         private void btnCancelTranscribe_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        private void DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
 
         }
@@ -264,6 +261,39 @@ namespace ExperimentASR
             // detailsWindow.ShowDialog();
         }
 
-      
+        private async void btnBenchmark_Click(object sender, RoutedEventArgs e)
+        {
+            StatusText.Text = "Завантаження датасету OpenTTS-Mykyta...";
+
+            // Варіант 1: Python.NET
+            await _datasetReader.LoadDatasetAsync();
+
+            // Варіант 2: HTTP API  
+            // var loader = new HuggingFaceDatasetLoader();
+            // _testItems = await loader.LoadDatasetAsync(150);
+
+            StatusText.Text = $"✅ Завантажено {_datasetReader.TestItems.Count} семплів";
+
+            // Ініціалізуємо двигуни
+            //_engines.AddRange(new AsrEngine[]
+            //{
+            //    new WhisperCppEngine("models/ggml-large-v3-turbo.bin"),
+            //    new VoskEngine("vosk-model-uk"),
+            //    new SileroOnnxEngine("silero_stt_uk_v5.onnx")
+            //});
+
+            var results = new ObservableCollection<BenchmarkResult>();
+            BenchmarkDataGrid.ItemsSource = results;
+            var bench = new BenchmarkRunner();
+            foreach (var engine in _engines)
+            {
+                StatusText.Text = $"Тестую {engine.Name}...";
+
+                var benchmark = await bench.RunEngineBenchmark(engine, _datasetReader.TestItems.Take(50));
+                results.Add(benchmark);
+            }
+
+            StatusText.Text = "✅ Бенчмарк завершено!";
+        }
     }
 }
