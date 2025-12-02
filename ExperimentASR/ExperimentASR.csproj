@@ -37,6 +37,54 @@
     <None Update="Scripts\utils\google_transcribe.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\am\final.mdl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\conf\mfcc.conf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\conf\model.conf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\COPYING">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\graph\disambig_tid.int">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\graph\Gr.fst">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\graph\HCLr.fst">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\graph\phones\word_boundary.int">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\graph\words.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\ivector\final.dubm">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\ivector\final.ie">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\ivector\final.mat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\ivector\global_cmvn.stats">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\ivector\online_cmvn.conf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\ivector\splice.conf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="SpeechRecognition\vosk-model-small-uk-v3-nano\ivector\splice_opts">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 

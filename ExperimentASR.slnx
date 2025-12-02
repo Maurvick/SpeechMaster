@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="ExperimentASR.Tests/ExperimentASR.Tests.csproj" Id="76ea296f-3913-4e85-a28b-8a47c5d705d6" />
   <Project Path="ExperimentASR/ExperimentASR.csproj" />
 </Solution>
