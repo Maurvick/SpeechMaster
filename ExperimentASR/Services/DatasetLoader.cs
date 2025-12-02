@@ -5,29 +5,26 @@ using System.Text.Json;
 
 namespace ExperimentASR.Services
 {
-    public class DatasetReader
+    public class DatasetLoader
     {
         private readonly List<TestItem> _testItems = new();
 
-        public async Task LoadDatasetAsync()
+        public async Task LoadDatasetAsync(string path)
         {
-            // Ініціалізуємо Python
             await Task.Run(() =>
             {
                 PythonEngine.Initialize();
                 using (Py.GIL())
                 {
-                    // Викликаємо Python-скрипт
                     dynamic sys = Py.Import("sys");
                     sys.path.append(Environment.CurrentDirectory);
 
                     dynamic extract = Py.Import("ExtractDataset");
-                    extract.extract_to_json("dataset.json");
+                    extract.extract_to_json(path);
                 }
             });
 
-            // Читаємо JSON
-            var json = await File.ReadAllTextAsync("dataset.json");
+            var json = await File.ReadAllTextAsync(path);
             var samples = JsonSerializer.Deserialize<List<DatasetSample>>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,

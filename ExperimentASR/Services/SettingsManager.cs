@@ -12,6 +12,8 @@ namespace ExperimentASR.Services
 
         private readonly string _settingsFilePath;
 
+        FileLogger _logger = new FileLogger();
+
         public event EventHandler? SettingsChanged;
 
         public SettingsManager()
@@ -97,6 +99,9 @@ namespace ExperimentASR.Services
                 _modelSize = persisted.WhisperModelSize ?? _modelSize;
                 _audioLanguage = persisted.AudioLanguage ?? _audioLanguage;
                 _asrEngine = persisted.AsrEngine ?? _asrEngine;
+
+                _logger.LogInfo("Settings loaded: " +
+                    $"ModelSize={_modelSize}, AudioLanguage={_audioLanguage}, AsrEngine={_asrEngine}");
 
                 OnSettingsChanged();
             }

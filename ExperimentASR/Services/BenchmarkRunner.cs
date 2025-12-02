@@ -1,17 +1,11 @@
 ﻿using ExperimentASR.Services;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Data;
 using System.Diagnostics;
-using System.Text;
-using System.Windows;
 
 namespace ExperimentASR.Models
 {
     public class BenchmarkRunner
     {
-        public async Task<BenchmarkResult> RunEngineBenchmark(AsrEngine engine, IEnumerable<TestItem> testItems)
+        public async Task<BenchmarkResult> RunEngineBenchmarkAsync(AsrEngine engine, IEnumerable<TestItem> testItems)
         {
             double totalWer = 0;
             long totalTime = 0;

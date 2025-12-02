@@ -12,10 +12,13 @@
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.0" />
     <PackageReference Include="ModernWpfUI" Version="0.9.6" />
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Parquet.Net" Version="5.4.0" />
     <PackageReference Include="Python.Runtime.NETStandard" Version="3.7.1" />
     <PackageReference Include="pythonnet_netstandard_py37_win" Version="2.5.2" />
     <PackageReference Include="Vanara.PInvoke.Wer" Version="4.2.1" />
     <PackageReference Include="Vosk" Version="0.3.38" />
+    <PackageReference Include="Whisper.net" Version="1.9.0" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
   </ItemGroup>
 
   <ItemGroup>

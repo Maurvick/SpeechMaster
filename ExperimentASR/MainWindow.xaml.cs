@@ -1,5 +1,6 @@
 ﻿using ExperimentASR.Models;
 using ExperimentASR.Services;
+using ExperimentASR.Services.Engines;
 using ExperimentASR.Views;
 using Microsoft.Win32;
 using NAudio.Wave;
@@ -9,6 +10,7 @@ using System.IO;
 using System.Security.Policy;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 
 namespace ExperimentASR
 {
@@ -17,9 +19,10 @@ namespace ExperimentASR
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly TranscribeService _transcribeSerivce = new TranscribeService();
-        private readonly DatasetReader _datasetReader = new(); // або HuggingFaceDatasetLoader
-        private readonly SettingsManager _settingsManager = new SettingsManager();
+        private readonly TranscribeService _transcribeSerivce = new();
+        private readonly SettingsManager _settingsManager = new();
+        private readonly DatasetLoader _datasetReader = new();
+        private List<AsrEngine> _engines = new();
 
         public MainWindow()
         {
@@ -230,48 +233,33 @@ namespace ExperimentASR
                 ApplySettingsToUI();
             }
         }
-
-            // Use .Show() to open it and let the user click back to the main window
-            
-
-            // OR use .ShowDialog() to force the user to close the new window 
-            // before returning to the main one (good for settings/modals)
-            // detailsWindow.ShowDialog();
         
-
         private async void btnBenchmark_Click(object sender, RoutedEventArgs e)
         {
-            StatusText.Text = "Завантаження датасету OpenTTS-Mykyta...";
+            StatusText.Text = "Loading dataset...";
 
-            // Варіант 1: Python.NET
-            await _datasetReader.LoadDatasetAsync();
+            await _datasetReader.LoadDatasetAsync(txtAudioFilePath.Text);
 
-            // Варіант 2: HTTP API  
-            // var loader = new HuggingFaceDatasetLoader();
-            // _testItems = await loader.LoadDatasetAsync(150);
+            StatusText.Text = $"{_datasetReader.TestItems.Count} samples loaded from dataset...";
 
-            StatusText.Text = $"✅ Завантажено {_datasetReader.TestItems.Count} семплів";
-
-            // Ініціалізуємо двигуни
-            //_engines.AddRange(new AsrEngine[]
-            //{
-            //    new WhisperCppEngine("models/ggml-large-v3-turbo.bin"),
-            //    new VoskEngine("vosk-model-uk"),
-            //    new SileroOnnxEngine("silero_stt_uk_v5.onnx")
-            //});
+            _engines.AddRange(new AsrEngine[]
+            {
+                new VoskEngine(),
+            });
 
             var results = new ObservableCollection<BenchmarkResult>();
             BenchmarkDataGrid.ItemsSource = results;
+
             var bench = new BenchmarkRunner();
             foreach (var engine in _engines)
             {
-                StatusText.Text = $"Тестую {engine.Name}...";
+                StatusText.Text = $"Testing {engine.Name}...";
 
-                var benchmark = await bench.RunEngineBenchmark(engine, _datasetReader.TestItems.Take(50));
+                var benchmark = await bench.RunEngineBenchmarkAsync(engine, _datasetReader.TestItems.Take(50));
                 results.Add(benchmark);
             }
 
-            StatusText.Text = "✅ Бенчмарк завершено!";
+            StatusText.Text = "✅ Benchmark completed!";
         }
 
         private void ApplySettingsToUI()
@@ -294,19 +282,16 @@ namespace ExperimentASR
                 }
 
                 // If you have radio buttons for sizes (radioWhisperBase etc.) set them
-                if (_settingsManager.WhisperModelSize != null && radioWhisperBase != null)
+                if (_settingsManager.WhisperModelSize != null && comboWhisperSize != null)
                 {
                     var size = _settingsManager.WhisperModelSize.ToLower();
-                    radioWhisperBase.IsChecked = size == "base";
-                    radioWhisperTiny.IsChecked = size == "tiny";
-                    radioWhisperSmall.IsChecked = size == "small";
-                    radioWhisperMedium.IsChecked = size == "medium";
+                    comboWhisperSize.SelectedItem = size;
                 }
 
                 // Audio language display (if you have a text block)
-                if (txtAudioLanguage != null)
+                if (comboLanguageSelect != null)
                 {
-                    txtAudioLanguage.Text = $"Language: {_settingsManager.AudioLanguage}";
+
                 }
             }
             catch
