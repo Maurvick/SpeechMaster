@@ -1,4 +1,5 @@
-﻿using ExperimentASR.Models.Transcription;
+﻿using ExperimentASR.Models;
+using ExperimentASR.Models.Transcription;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -8,11 +9,20 @@ namespace ExperimentASR.Services
 {
     public class TranscriptionQueueManager
     {
+        private readonly TranscribeService _transcribeSerivce;
+
         // This collection binds directly to your UI
         public ObservableCollection<TranscriptionJob> Jobs { get; set; }
             = new ObservableCollection<TranscriptionJob>();
 
+        private CancellationTokenSource _cts; // The trigger
+
         private bool _isProcessing = false;
+
+        public TranscriptionQueueManager()
+        {
+            _transcribeSerivce = new TranscribeService();
+        }
 
         public void AddFile(string path)
         {
@@ -30,31 +40,57 @@ namespace ExperimentASR.Services
             if (_isProcessing) return;
             _isProcessing = true;
 
-            // Process items one by one
-            while (Jobs.Any(j => j.Status == "Pending"))
+            // Create a new cancellation token source
+            _cts = new CancellationTokenSource();
+
+            try
             {
-                // Get the next pending job
-                var currentJob = Jobs.First(j => j.Status == "Pending");
+                while (Jobs.Any(j => j.Status == "Pending"))
+                {
+                    // 1. CHECK FOR CANCELLATION BEFORE STARTING A JOB
+                    if (_cts.Token.IsCancellationRequested)
+                    {
+                        break; // Exit the loop immediately
+                    }
 
-                currentJob.Status = "Processing...";
+                    // Get the next pending job
+                    var currentJob = Jobs.First(j => j.Status == "Pending");
 
-                // Run the actual transcription on a background thread
-                // Replace 'SimulateTranscribe' with your actual ASR function
-                var text = await Task.Run(() => SimulateTranscribe(currentJob.FilePath));
+                    currentJob.Status = "Processing...";
 
-                currentJob.Result = text;
-                currentJob.Status = "Completed";
+                    var result = await Task.Run(() => SimulateTranscribe(currentJob.FilePath));
+
+                    // 2. CHECK AGAIN AFTER JOB FINISHES (to avoid updating UI if canceled)
+                    if (_cts.Token.IsCancellationRequested)
+                    {
+                        currentJob.Status = "Pending"; // Reset status so it can be run again later
+                        break;
+                    }
+
+                    currentJob.Result = result.Transcript;
+                    currentJob.Status = result.Message;
+                }
+
             }
-
-            _isProcessing = false;
+            catch (OperationCanceledException)
+            {
+                // Handle if the task was killed mid-process
+            }
+            finally
+            {
+                _isProcessing = false;
+                _cts.Dispose(); // Clean up
+                _cts = null;
+            }
+        }
+        public void CancelProcessing()
+        {
+            _cts?.Cancel(); // Signal the stop
         }
 
-        // PLUG YOUR ASR CODE HERE
-        private string SimulateTranscribe(string path)
+        private async Task<TranscriptionResult> SimulateTranscribe(string path)
         {
-            // Simulate a delay (e.g., 2 seconds)
-            Thread.Sleep(2000);
-            return "This is a simulated transcription result.";
+            return await Task.Run(() => _transcribeSerivce.Transcribe(path));
         }
     }
 }

@@ -4,6 +4,7 @@ using ExperimentASR.Services.Engines;
 using ExperimentASR.Views;
 using Microsoft.Win32;
 using NAudio.Wave;
+using Parquet.Schema;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -125,7 +126,25 @@ namespace ExperimentASR
             ofd.Filter = "Audio files|*.wav;*.mp3;*.ogg;*.flac|All files|*.*";
             ofd.Multiselect = true;
             if (ofd.ShowDialog() == true)
-                txtAudioFilePath.Text = ofd.FileName;
+            {
+                if (ofd.FileNames.Length > 1)
+                {
+                    // Multiple files selected - add to queue
+                    foreach (var file in ofd.FileNames)
+                    {
+                        _manager.AddFile(file);
+                    }
+                    txtAudioFilePath.Text = $"{ofd.FileNames.Length} files added to queue.";
+                }
+                else
+                {
+                    // Single file selected
+                    var file = ofd.FileName;
+                    txtAudioFilePath.Text = file;
+                    _manager.AddFile(file);
+                }
+            }
+                
         }
 
         // Start Transcription
@@ -145,9 +164,10 @@ namespace ExperimentASR
             try
             {
                 // Initiate transcription via TranscribeService
-                var result = await Task.Run(() => _transcribeSerivce.Transcribe(file));
+                await _manager.StartProcessing();
+                var currentJob = _manager.Jobs.First();
 
-                if (result == null)
+                if (currentJob == null)
                 {
                     var msg = "No transcript received.";
                     MessageBox.Show(msg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -155,15 +175,15 @@ namespace ExperimentASR
                     return;
                 }
 
-                if (!string.IsNullOrWhiteSpace(result.Transcript))
+                if (!string.IsNullOrWhiteSpace(currentJob.Result))
                 {
-                    boxTranscriptOutput.Text = result.Transcript;
+                    boxTranscriptOutput.Text = currentJob.Result;
                 }
                 else
                 {
                     // If Transcriber sets Message on failure, show it; otherwise show fallback
-                    var msg = result.Message ?? "Під час розпізнавання сталася помилка.";
-                    MessageBox.Show(msg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    var msg = currentJob.Status ?? "Під час розпізнавання сталася помилка.";
+                    MessageBox.Show(msg, "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                     boxTranscriptOutput.Text = msg;
                 }
             }
@@ -192,7 +212,7 @@ namespace ExperimentASR
 
         private void btnCancelTranscribe_Click(object sender, RoutedEventArgs e)
         {
-
+            _manager.CancelProcessing();
         }
 
         private void btnCopy_Click(object sender, RoutedEventArgs e)
@@ -278,15 +298,24 @@ namespace ExperimentASR
             // Example: set model selection UI if those controls exist
             try
             {
-                // comboModelSelect is expected to contain items such as "Whisper"
-                if (comboAsrModels != null)
+                // Get the target size string from settings
+                var targetSize = _settingsManager.AsrEngine?.ToLower();
+
+                if (!string.IsNullOrEmpty(targetSize) && comboWhisperSize != null)
                 {
-                    // If ASR engine is Whisper, ensure Whisper is selected in model dropdown
-                    foreach (var item in comboAsrModels.Items)
+                    foreach (var item in comboWhisperSize.Items)
                     {
-                        if (item is ComboBoxItem cbi && cbi.Content != null && cbi.Content.ToString()?.ToLower().Contains(_settingsManager.AsrEngine.ToLower()) == true)
+                        // Check if the item is a ComboBoxItem (XAML defined)
+                        if (item is ComboBoxItem cbi && cbi.Content?.ToString().ToLower() == targetSize)
                         {
                             comboAsrModels.SelectedItem = cbi;
+                            break;
+                        }
+
+                        // Check if the item is just a String (Code defined)
+                        else if (item is string s && s.ToLower() == targetSize)
+                        {
+                            comboWhisperSize.SelectedItem = item;
                             break;
                         }
                     }
@@ -348,6 +377,19 @@ namespace ExperimentASR
                 Owner = this
             };
             benchmarkWindow.ShowDialog();
+        }
+
+        private void menuLogs_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs.txt");
+                Process.Start(new ProcessStartInfo("notepad.exe", filePath) { UseShellExecute = false });
+            }
+            catch
+            {
+                MessageBox.Show("Could not open logs file.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }
