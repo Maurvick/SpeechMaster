@@ -32,9 +32,9 @@ namespace ExperimentASR.Views
         private async void btnBenchmark_Click(object sender, RoutedEventArgs e)
         {
 			var engines = _engineManager.AvailableEngines;
-			StatusService.Instance.Update("Loading dataset...");
+			StatusService.Instance.UpdateStatus("Loading dataset...");
 
-			StatusService.Instance.Update($"{_datasetReader.TestItems.Count} " +
+			StatusService.Instance.UpdateStatus($"{_datasetReader.TestItems.Count} " +
 				$"samples loaded from dataset...");
 
 			engines.AddRange(
@@ -48,14 +48,14 @@ namespace ExperimentASR.Views
 			var bench = new BenchmarkRunner();
 			foreach (var engine in engines)
 			{
-				StatusService.Instance.Update($"Testing {engine.Name}...");
+				StatusService.Instance.UpdateStatus($"Testing {engine.Name}...");
 
 				var benchmark = await bench.RunEngineBenchmarkAsync(engine, 
 					_datasetReader.TestItems.Take(50));
 				results.Add(benchmark);
 			}
 
-			StatusService.Instance.Update("✅ Benchmark completed!");
+			StatusService.Instance.UpdateStatus("✅ Benchmark completed!");
 		}
 	}
 }

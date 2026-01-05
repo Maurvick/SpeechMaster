@@ -13,6 +13,9 @@ namespace ExperimentASR.Services
 		// Base URL for GGML models (HuggingFace is reliable for this)
 		private const string ModelBaseUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/";
 
+		// ./whisper-bin-x64/release/...
+		private const string EngineFolderName = "whisper-bin-x64/release ";
+
 		private readonly string _baseDir;
 		private readonly HttpClient _httpClient;
 
@@ -22,10 +25,11 @@ namespace ExperimentASR.Services
 			_httpClient = new HttpClient();
 		}
 
+
         public bool IsEngineInstalled()
         {
             string dllPath = Path.Combine(_baseDir, "whisper.dll");
-            string modelPath = Path.Combine(_baseDir, "Models", "ggml-base.bin");
+            string modelPath = Path.Combine(_baseDir, "Models", EngineFolderName);
 
             // Check if both the engine and at least one model exist
             return File.Exists(dllPath) && File.Exists(modelPath);
@@ -37,36 +41,39 @@ namespace ExperimentASR.Services
 
 			if (File.Exists(dllPath))
 			{
-				StatusService.Instance.Update("Engine integrity check: OK");
+				StatusService.Instance.UpdateStatus("Engine integrity check: OK");
 				return;
 			}
 
 			try
 			{
-				StatusService.Instance.Update("Downloading Whisper Engine (Native)...");
+				StatusService.Instance.UpdateStatus("Downloading Whisper Engine (Native)...");
 
 				string zipPath = Path.Combine(_baseDir, "engine_temp.zip");
 
 				// 1. Download Zip
 				await DownloadFileAsync(EngineDownloadUrl, zipPath);
+				StatusService.Instance.SetProgress(25);
 
 				// 2. Extract DLL
-				StatusService.Instance.Update("Extracting Engine components...");
+				StatusService.Instance.UpdateStatus("Extracting Engine components...");
+				StatusService.Instance.SetProgress(75);
 				ExtractDllFromZip(zipPath, "whisper.dll", dllPath);
 
 				// 3. Cleanup
 				if (File.Exists(zipPath)) File.Delete(zipPath);
 
-				StatusService.Instance.Update("Engine installed successfully.");
+				StatusService.Instance.UpdateStatus("Engine installed successfully.");
+				StatusService.Instance.SetProgress(100);
 			}
 			catch (Exception ex)
 			{
-				StatusService.Instance.Update($"Engine Setup Failed: {ex.Message}");
+				StatusService.Instance.UpdateStatus($"Engine Setup Failed: {ex.Message}");
 				throw; // Rethrow to stop app startup if critical
 			}
 		}
 
-		public async Task EnsureModelExistsAsync(string modelName = "ggml-base.bin")
+		public async Task EnsureModelExistsAsync(string modelName = EngineFolderName)
 		{
 			string modelPath = Path.Combine(_baseDir, "Models", modelName);
 			string directory = Path.GetDirectoryName(modelPath);
@@ -76,11 +83,11 @@ namespace ExperimentASR.Services
 			if (File.Exists(modelPath)) return;
 
 			string url = $"{ModelBaseUrl}{modelName}";
-			StatusService.Instance.Update($"Downloading Model: {modelName}...");
+			StatusService.Instance.UpdateStatus($"Downloading Model: {modelName}...");
 
 			await DownloadFileAsync(url, modelPath);
 
-			StatusService.Instance.Update($"Model {modelName} ready.");
+			StatusService.Instance.UpdateStatus($"Model {modelName} ready.");
 		}
 
 		private async Task DownloadFileAsync(string url, string destinationPath)
@@ -111,7 +118,7 @@ namespace ExperimentASR.Services
 							if (totalRead % (1024 * 1024) == 0) // Update every 1MB
 							{
 								// Using StatusService to notify UI
-								StatusService.Instance.Update($"Downloading... {progress}%");
+								StatusService.Instance.UpdateStatus($"Downloading... {progress}%");
 							}
 						}
 					}

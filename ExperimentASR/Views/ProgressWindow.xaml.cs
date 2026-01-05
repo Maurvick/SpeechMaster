@@ -1,4 +1,6 @@
 ﻿using System.Windows;
+using ExperimentASR.Services;
+using Vanara.PInvoke;
 
 namespace ExperimentASR.Windows
 {
@@ -7,12 +9,22 @@ namespace ExperimentASR.Windows
         public ProgressWindow()
         {
             InitializeComponent();
+			// Subscribe to our global status service
+			StatusService.Instance.OnStatusChanged += UpdateStatus;
+            StatusService.Instance.OnProgressChanged += SetProgress;
+		}
 
-            // Start the background operation immediately when the window loads
-            RunProcess();
-        }
+		private void UpdateStatus(string message)
+		{
+			Dispatcher.Invoke(() => StatusText.Text = message);
+		}
 
-        private async void RunProcess()
+        private void SetProgress(double value)
+        {
+            Dispatcher.Invoke(() => MyProgressBar.Value = value);
+		}
+
+		private async void RunProcess()
         {
             // This loop simulates a heavy task
             for (int i = 0; i <= 100; i += 10)

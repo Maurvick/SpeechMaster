@@ -2,6 +2,7 @@
 using ExperimentASR.Services;
 using ExperimentASR.Services.Engines;
 using ExperimentASR.Views;
+using ExperimentASR.Windows;
 using Microsoft.Win32;
 using NAudio.Wave;
 using Parquet.Schema;
@@ -23,7 +24,7 @@ namespace ExperimentASR
         private readonly TranscribeService _transcribeSerivce = new();
         private readonly SettingsManager _settingsManager = new();
         private readonly TranscriptionQueueManager _manager = new();
-        private readonly EngineSetupService setupService = new();
+        private readonly EngineSetupService _setupService = new();
 
         public MainWindow()
         {
@@ -98,7 +99,8 @@ namespace ExperimentASR
         // TODO: this is unused, remove or implement
         private async void UpdateProgressBar()
         {
-            int audioDurationSeconds = await Task.Run(() => AudioHelper.GetAudioFileDuration(txtAudioFilePath.Text)).ConfigureAwait(false);
+            int audioDurationSeconds = await Task.Run(() => 
+                AudioHelper.GetAudioFileDuration(txtAudioFilePath.Text)).ConfigureAwait(false);
             if (audioDurationSeconds <= 0) return;
             int smallModelProccessingTime = 12;
             double processingSpeed = audioDurationSeconds / (double)smallModelProccessingTime;
@@ -175,7 +177,7 @@ namespace ExperimentASR
             }
 
             boxTranscriptOutput.Text = "Please wait, analizing file...";
-            StatusService.Instance.Update("Working...");
+            StatusService.Instance.UpdateStatus("Working...");
 
             try
             {
@@ -283,16 +285,16 @@ namespace ExperimentASR
             try
             {
                 // Download whisper.dll if missing
-                await setupService.EnsureEngineExistsAsync();
+                await _setupService.EnsureEngineExistsAsync();
 
                 // Download default model if missing
-                await setupService.EnsureModelExistsAsync("ggml-base.bin");
+                await _setupService.EnsureModelExistsAsync("ggml-base.bin");
 
-                StatusService.Instance.Update("Ready");
+                StatusService.Instance.UpdateStatus("Ready");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Critical Error: {ex.Message}", "Startup Failed");
+                MessageBox.Show($"Failed to download Whisper: {ex.Message}", "Download Failed");
             }
             finally
             {
@@ -316,8 +318,21 @@ namespace ExperimentASR
             _transcribeSerivce.TranscriptionFinished += TranscribeService_TranscriptionFinished;
             // Subscribe to status updates
             StatusService.Instance.OnStatusChanged += UpdateStatusText;
-            
-            await DownloadWhisper();
+            if (!_setupService.IsEngineInstalled())
+            {
+                if (MessageBox.Show("Whisper ASR engine not found. Download and install it now?", 
+                    "Engine Missing", MessageBoxButton.YesNo, MessageBoxImage.Question) == 
+                    MessageBoxResult.Yes)
+                {
+					ProgressWindow progressWindow = new ProgressWindow
+                    {
+                        Owner = this
+                    };
+					progressWindow.Show();
+					await DownloadWhisper();
+                    return;
+				}
+			}
             // Check tools availability
             GetAsrEngineLocation();
             GetFFMPEGLocation();
