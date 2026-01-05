@@ -22,16 +22,14 @@ namespace ExperimentASR
     {
         private readonly TranscribeService _transcribeSerivce = new();
         private readonly SettingsManager _settingsManager = new();
-        private readonly DatasetLoader _datasetReader = new();
         private readonly TranscriptionQueueManager _manager = new();
+        private readonly EngineSetupService setupService = new();
 
         public MainWindow()
         {
             InitializeComponent();
             // Bind the DataGrid to queue manager list
             QueueGrid.ItemsSource = _manager.Jobs;
-			// Subscribe to status updates
-			StatusService.Instance.OnStatusChanged += UpdateStatusText;
 		}
 
 		private void UpdateStatusText(string message)
@@ -97,6 +95,7 @@ namespace ExperimentASR
             }
         }
 
+        // TODO: this is unused, remove or implement
         private async void UpdateProgressBar()
         {
             int audioDurationSeconds = await Task.Run(() => AudioHelper.GetAudioFileDuration(txtAudioFilePath.Text)).ConfigureAwait(false);
@@ -242,7 +241,6 @@ namespace ExperimentASR
 
         private void btnSaveTxt_Click(object sender, RoutedEventArgs e)
         {
-            // save text to file
             var sfd = new SaveFileDialog();
             sfd.Filter = "Text files|*.txt|All files|*.*";
             if (sfd.ShowDialog() == true)
@@ -270,10 +268,36 @@ namespace ExperimentASR
         {
             
         }
-        
+
+        // TODO: implement applying settings to UI
         private void ApplySettingsToUI()
         {
  
+        }
+
+        private async Task DownloadWhisper()
+        {
+            // Disable UI interactions while downloading
+            IsEnabled = false;
+
+            try
+            {
+                // Download whisper.dll if missing
+                await setupService.EnsureEngineExistsAsync();
+
+                // Download default model if missing
+                await setupService.EnsureModelExistsAsync("ggml-base.bin");
+
+                StatusService.Instance.Update("Ready");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Critical Error: {ex.Message}", "Startup Failed");
+            }
+            finally
+            {
+                IsEnabled = true;
+            }
         }
 
         private void SettingsManager_SettingsChanged(object? sender, System.EventArgs e)
@@ -282,17 +306,21 @@ namespace ExperimentASR
             Dispatcher.Invoke(ApplySettingsToUI);
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             // Load settings early so we can apply them to UI
             _settingsManager.LoadSettings();
             _settingsManager.SettingsChanged += SettingsManager_SettingsChanged;
-            // Check tools availability
-            GetAsrEngineLocation();
-            GetFFMPEGLocation();
             // Subscribe to service events
             _transcribeSerivce.TranscriptionStarted += TranscribeService_TranscriptionStarted;
             _transcribeSerivce.TranscriptionFinished += TranscribeService_TranscriptionFinished;
+            // Subscribe to status updates
+            StatusService.Instance.OnStatusChanged += UpdateStatusText;
+            
+            await DownloadWhisper();
+            // Check tools availability
+            GetAsrEngineLocation();
+            GetFFMPEGLocation();
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)

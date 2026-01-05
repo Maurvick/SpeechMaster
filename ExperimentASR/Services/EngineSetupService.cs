@@ -22,7 +22,16 @@ namespace ExperimentASR.Services
 			_httpClient = new HttpClient();
 		}
 
-		public async Task EnsureEngineExistsAsync()
+        public bool IsEngineInstalled()
+        {
+            string dllPath = Path.Combine(_baseDir, "whisper.dll");
+            string modelPath = Path.Combine(_baseDir, "Models", "ggml-base.bin");
+
+            // Check if both the engine and at least one model exist
+            return File.Exists(dllPath) && File.Exists(modelPath);
+        }
+
+        public async Task EnsureEngineExistsAsync()
 		{
 			string dllPath = Path.Combine(_baseDir, "whisper.dll");
 
