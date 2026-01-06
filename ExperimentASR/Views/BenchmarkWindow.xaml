@@ -5,6 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ExperimentASR.Views"
         mc:Ignorable="d"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        ui:WindowHelper.UseModernWindowStyle="True"
         Title="Benchmark" Height="450" Width="800">
     <Grid>
 		<Border BorderBrush="Gray" BorderThickness="1"

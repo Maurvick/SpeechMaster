@@ -4,6 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ExperimentASR.Views"
+		xmlns:ui="http://schemas.modernwpf.com/2019"
+		ui:WindowHelper.UseModernWindowStyle="True"
         mc:Ignorable="d"
         Title="About" Height="450" Width="800">
 
@@ -41,6 +43,7 @@
 					<TextBlock Text="• CommunityToolkit.Mvvm (Architecture)" Margin="0,2"/>
 					<TextBlock Text="• Parquet.Net (Big Data Support)" Margin="0,2"/>
 					<TextBlock Text="• FFmpeg (Media Conversion)" Margin="0,2"/>
+					<TextBlock Text="• ModernWPF (User Interface)" Margin="0,2"/>
 				</StackPanel>
 			</ScrollViewer>
 		</GroupBox>

@@ -103,7 +103,7 @@
 			</Grid.ColumnDefinitions>
 
 			<Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1"
-            CornerRadius="8" Padding="16" Margin="0,0,10,0">
+            CornerRadius="8" Padding="16" Margin="0,0,625,0" Grid.ColumnSpan="2">
 
 				<StackPanel x:Name="panelTranscriptOptions" VerticalAlignment="Center" Height="536">
 
@@ -132,6 +132,7 @@
 					<StackPanel VerticalAlignment="Stretch">
 						<StackPanel Orientation="Horizontal" Margin="0,10,0,0"/>
 					</StackPanel>
+					<Separator Height="20"/>
 
 					<Grid Margin="10">
 						<Grid.RowDefinitions>
@@ -150,8 +151,6 @@
 						</DataGrid>
 					</Grid>
 
-					<Separator Margin="0,20"/>
-
 					<StackPanel VerticalAlignment="Stretch">
 						<StackPanel Orientation="Horizontal" Margin="0,10,0,0"/>
 					</StackPanel>
@@ -159,7 +158,7 @@
 			</Border>
 
 			<Border x:Name="borderTranscriptOutput" Grid.Column="1" BorderBrush="Gray" BorderThickness="1"
-            CornerRadius="8" Padding="20" Margin="5,0,0,0" Grid.ColumnSpan="2">
+            CornerRadius="8" Padding="20" Margin="60,0,0,0" Grid.ColumnSpan="2">
 				<Grid>
 					<Grid.RowDefinitions>
 						<RowDefinition Height="*"/>

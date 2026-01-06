@@ -17,8 +17,11 @@ namespace ExperimentASR.Services
 
         FileLogger _logger = new FileLogger();
 
-        // Events
-        public event EventHandler? TranscriptionStarted;
+		// Path to FFmpeg (ensure this matches where you store it)
+		private readonly string _ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tools", "ffmpeg.exe");
+
+		// Events
+		public event EventHandler? TranscriptionStarted;
         public event EventHandler<TranscriptionFinishedEventArgs>? TranscriptionFinished;
 
         public TranscribeService()
@@ -33,6 +36,104 @@ namespace ExperimentASR.Services
         {
             get { return _scriptPath; }
         }
+
+		private TranscriptionResult TranscribeLongFile(string sourceFile, double totalDurationSec)
+		{
+			_logger.LogInfo($"Large file detected ({totalDurationSec}s). Starting segmentation...");
+
+			// 1. Create a temporary folder for chunks
+			string tempFolder = Path.Combine(Path.GetTempPath(), "ExperimentASR_Chunks", Guid.NewGuid().ToString());
+			Directory.CreateDirectory(tempFolder);
+
+			var combinedResult = new TranscriptionResult
+			{
+				Status = "success",
+				Transcript = "",
+				Segments = new List<Segment>()
+			};
+
+			try
+			{
+				// 2. Split Audio using FFmpeg
+				// -f segment: Enables splitting
+				// -segment_time 300: Split every 300 seconds (5 mins)
+				// -c:a pcm_s16le -ar 16000: Convert to WAV 16kHz immediately (Optimized for Whisper)
+				string chunkPattern = Path.Combine(tempFolder, "chunk_%03d.wav");
+
+				var startInfo = new System.Diagnostics.ProcessStartInfo
+				{
+					FileName = _ffmpegPath,
+					Arguments = $"-i \"{sourceFile}\" -f segment -segment_time 300 -c:a pcm_s16le -ar 16000 -ac 1 \"{chunkPattern}\"",
+					UseShellExecute = false,
+					CreateNoWindow = true
+				};
+
+				using (var proc = System.Diagnostics.Process.Start(startInfo))
+				{
+					proc.WaitForExit();
+				}
+
+				// 3. Process Chunks Sequentially
+				var chunks = Directory.GetFiles(tempFolder, "chunk_*.wav").OrderBy(f => f).ToList();
+
+				for (int i = 0; i < chunks.Count; i++)
+				{
+					string chunkPath = chunks[i];
+
+					// Notify UI about specific chunk progress
+					// We calculate a global percentage: (ChunkIndex / TotalChunks) * 100
+					double globalProgress = ((double)i / chunks.Count) * 100;
+					// You might need to expose an event or use your StatusService here
+					// StatusService.Instance.SetProgress(globalProgress); 
+					StatusService.Instance.UpdateStatus($"Processing part {i + 1} of {chunks.Count}...");
+
+					// Transcribe this specific chunk
+					var chunkResult = RunCommand(chunkPath, _asrEngine);
+
+					if (chunkResult.Status == "success")
+					{
+						// 4. MERGE LOGIC
+						// Calculate the time offset for this chunk (e.g., Chunk 2 starts at 300s)
+						double timeOffset = i * 300.0;
+
+						// Append text
+						combinedResult.Transcript += " " + chunkResult.Transcript;
+
+						// Append Segments with adjusted timestamps
+						if (chunkResult.Segments != null)
+						{
+							foreach (var seg in chunkResult.Segments)
+							{
+								seg.Start += timeOffset;
+								seg.End += timeOffset;
+								combinedResult.Segments.Add(seg);
+							}
+						}
+					}
+					else
+					{
+						_logger.LogError($"Failed to transcribe chunk {i}: {chunkResult.Message}");
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				return new TranscriptionResult
+				{
+					Status = "error",
+					Message = $"Segmentation failed: {ex.Message}"
+				};
+			}
+			finally
+			{
+				// 5. Cleanup Temp Files
+				if (Directory.Exists(tempFolder))
+					Directory.Delete(tempFolder, true);
+			}
+
+			return combinedResult;
+		}
+    }
 
         private TranscriptionResult ParseOutput(string output, string error)
         {
