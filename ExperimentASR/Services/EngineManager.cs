@@ -14,6 +14,7 @@ namespace ExperimentASR.Services
 	/// </summary>
 	public class EngineManager
     {
+		// TODO: Duplicate of EngineSetupService?
 		private List<AsrEngine> _engines = new();
 
 		public List<AsrEngine> AvailableEngines

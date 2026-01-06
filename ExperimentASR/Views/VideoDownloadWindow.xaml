@@ -5,8 +5,73 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ExperimentASR.Views"
         mc:Ignorable="d"
-        Title="VideoDownloadWindow" Height="450" Width="800">
-    <Grid>
-        
-    </Grid>
+		xmlns:ui="http://schemas.modernwpf.com/2019"
+		ui:WindowHelper.UseModernWindowStyle="True"
+		WindowStartupLocation="CenterOwner" ResizeMode="CanMinimize"
+		KeyboardNavigation.TabNavigation="Cycle"
+        Title="Download Media" Height="450" Width="800">
+
+	<Grid Margin="24">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="Auto"/>
+		</Grid.RowDefinitions>
+
+		<StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,24">
+			<ui:SymbolIcon Symbol="Video" />
+			<StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
+				<TextBlock Text="Media Downloader" />
+				<TextBlock Text="Download video, audio, or subtitles for analysis" />
+			</StackPanel>
+		</StackPanel>
+
+		<StackPanel Grid.Row="1" Margin="0,0,0,16">
+			<TextBlock Text="Source URL" Margin="0,0,0,8"/>
+			<TextBox x:Name="TxtUrl"
+					 TabIndex="0"
+                     ui:ControlHelper.PlaceholderText="Paste YouTube or direct video link here..."
+                     FontFamily="Consolas"/>
+		</StackPanel>
+
+		<StackPanel Grid.Row="2" Margin="0,0,0,16">
+			<TextBlock Text="Download Mode" Margin="0,0,0,8"/>
+
+			<ui:SimpleStackPanel Spacing="10" Orientation="Horizontal">
+				<RadioButton x:Name="RbFullVideo" Content="Full Video (MP4)" GroupName="Mode"/>
+				<RadioButton x:Name="RbAudioOnly" Content="Audio Only (WAV for ASR)" GroupName="Mode"/>
+				<RadioButton TabIndex="1" x:Name="RbSubtitles" Content="Subtitles Only (SRT)" IsChecked="True" GroupName="Mode"/>
+			</ui:SimpleStackPanel>
+		</StackPanel>
+
+		<Grid Grid.Row="3" Margin="0,0,0,24">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*"/>
+				<ColumnDefinition Width="Auto"/>
+			</Grid.ColumnDefinitions>
+
+			<StackPanel Grid.Column="0">
+				<TextBlock Text="Save Location" Margin="0,0,0,8"/>
+				<TextBox x:Name="TxtOutputPath" IsReadOnly="True" />
+			</StackPanel>
+
+			<Button x:Name="BtnBrowse" Grid.Column="1" TabIndex="2" Content="Browse..." Margin="8,27,0,0" Click="BtnBrowse_Click"/>
+		</Grid>
+
+		<StackPanel Grid.Row="4" VerticalAlignment="Center">
+			<Grid Margin="0,0,0,8">
+				<TextBlock x:Name="TxtStatus" Text="Ready" />
+				<TextBlock x:Name="TxtProgressPercent" Text="0%" HorizontalAlignment="Right" />
+			</Grid>
+			<ProgressBar x:Name="PbDownload" Maximum="100"/>
+		</StackPanel>
+
+		<StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+			<Button x:Name="BtnCancel" Content="Cancel" Margin="0,0,12,0" Click="BtnCancel_Click"/>
+			<Button TabIndex="3" x:Name="BtnDownload" Content="Download" Click="BtnDownload_Click"/>
+		</StackPanel>
+	</Grid>
 </Window>

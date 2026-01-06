@@ -1,20 +1,21 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace ExperimentASR.Services
 {
 	public class EngineSetupService
 	{
-		// Link to a specific stable release of whisper.cpp for Windows x64
-		// You can check for newer versions here: https://github.com/ggerganov/whisper.cpp/releases
-		private const string EngineDownloadUrl = "https://github.com/ggerganov/whisper.cpp/releases/download/v1.7.1/whisper-bin-x64.zip";
+		// 1. ENGINE: Whisper.dll (GitHub)
+		private const string EngineDownloadUrl = "https://github.com/ggml-org/whisper.cpp/releases/download/v1.8.2/whisper-bin-x64.zip";
 
-		// Base URL for GGML models (HuggingFace is reliable for this)
+		// 2. MODEL: ggml-base.bin (HuggingFace)
+		// We MUST separate this from the engine folder logic. Models are standalone files.
 		private const string ModelBaseUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/";
-
-		// ./whisper-bin-x64/release/...
-		private const string EngineFolderName = "whisper-bin-x64/release ";
+		private const string DefaultModelName = "ggml-base.bin";
 
 		private readonly string _baseDir;
 		private readonly HttpClient _httpClient;
@@ -23,19 +24,18 @@ namespace ExperimentASR.Services
 		{
 			_baseDir = AppDomain.CurrentDomain.BaseDirectory;
 			_httpClient = new HttpClient();
+			// User-Agent is often required by GitHub API/Downloads to prevent 403 errors
+			_httpClient.DefaultRequestHeaders.Add("User-Agent", "ExperimentASR-Downloader");
 		}
 
+		public bool IsEngineInstalled()
+		{
+			string dllPath = Path.Combine(_baseDir, "whisper.dll");
+			string modelPath = Path.Combine(_baseDir, "Models", DefaultModelName);
+			return File.Exists(dllPath) && File.Exists(modelPath);
+		}
 
-        public bool IsEngineInstalled()
-        {
-            string dllPath = Path.Combine(_baseDir, "whisper.dll");
-            string modelPath = Path.Combine(_baseDir, "Models", EngineFolderName);
-
-            // Check if both the engine and at least one model exist
-            return File.Exists(dllPath) && File.Exists(modelPath);
-        }
-
-        public async Task EnsureEngineExistsAsync()
+		public async Task EnsureEngineExistsAsync()
 		{
 			string dllPath = Path.Combine(_baseDir, "whisper.dll");
 
@@ -45,56 +45,80 @@ namespace ExperimentASR.Services
 				return;
 			}
 
+			string zipPath = Path.Combine(_baseDir, "engine_temp.zip");
+
 			try
 			{
-				StatusService.Instance.UpdateStatus("Downloading Whisper Engine (Native)...");
-
-				string zipPath = Path.Combine(_baseDir, "engine_temp.zip");
-
-				// 1. Download Zip
-				await DownloadFileAsync(EngineDownloadUrl, zipPath);
 				StatusService.Instance.SetProgress(25);
+				StatusService.Instance.UpdateStatus("Downloading Whisper Engine from GitHub...");
 
-				// 2. Extract DLL
-				StatusService.Instance.UpdateStatus("Extracting Engine components...");
-				StatusService.Instance.SetProgress(75);
+				// 1. Download the Zip
+				await DownloadFileAsync(EngineDownloadUrl, zipPath);
+				StatusService.Instance.SetProgress(50);
+
+				// 2. Extract specific file from the specific folder structure
+				StatusService.Instance.UpdateStatus("Extracting whisper.dll...");
+
+				// The structure inside zip is: whisper-bin-x64/release/whisper.dll
 				ExtractDllFromZip(zipPath, "whisper.dll", dllPath);
 
-				// 3. Cleanup
-				if (File.Exists(zipPath)) File.Delete(zipPath);
-
+				StatusService.Instance.SetProgress(75);
 				StatusService.Instance.UpdateStatus("Engine installed successfully.");
-				StatusService.Instance.SetProgress(100);
 			}
 			catch (Exception ex)
 			{
 				StatusService.Instance.UpdateStatus($"Engine Setup Failed: {ex.Message}");
-				throw; // Rethrow to stop app startup if critical
+				throw;
+			}
+			finally
+			{
+				// Always clean up the zip
+				if (File.Exists(zipPath)) File.Delete(zipPath);
 			}
 		}
 
-		public async Task EnsureModelExistsAsync(string modelName = EngineFolderName)
+		public async Task EnsureModelExistsAsync(string modelName = DefaultModelName)
 		{
-			string modelPath = Path.Combine(_baseDir, "Models", modelName);
-			string directory = Path.GetDirectoryName(modelPath);
+			string modelFolder = Path.Combine(_baseDir, "Models");
+			string modelPath = Path.Combine(modelFolder, modelName);
 
-			if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
+			if (!Directory.Exists(modelFolder)) Directory.CreateDirectory(modelFolder);
 
-			if (File.Exists(modelPath)) return;
+			if (File.Exists(modelPath))
+			{
+				StatusService.Instance.UpdateStatus("Model check: OK");
+				return;
+			}
 
+			// Correct URL construction: Base + Filename (e.g. "ggml-base.bin")
 			string url = $"{ModelBaseUrl}{modelName}";
+
+			StatusService.Instance.SetProgress(85);
 			StatusService.Instance.UpdateStatus($"Downloading Model: {modelName}...");
 
-			await DownloadFileAsync(url, modelPath);
-
-			StatusService.Instance.UpdateStatus($"Model {modelName} ready.");
+			try
+			{
+				await DownloadFileAsync(url, modelPath);
+				StatusService.Instance.SetProgress(100);
+				StatusService.Instance.UpdateStatus($"Model {modelName} ready.");
+			}
+			catch (Exception ex)
+			{
+				// Clean up partial file if download failed
+				if (File.Exists(modelPath)) File.Delete(modelPath);
+				StatusService.Instance.UpdateStatus($"Model download error: {ex.Message}");
+				throw;
+			}
 		}
 
 		private async Task DownloadFileAsync(string url, string destinationPath)
 		{
 			using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
 			{
-				response.EnsureSuccessStatusCode();
+				if (!response.IsSuccessStatusCode)
+				{
+					throw new HttpRequestException($"Download failed. Status: {response.StatusCode}, URL: {url}");
+				}
 
 				var totalBytes = response.Content.Headers.ContentLength ?? -1L;
 				var canReportProgress = totalBytes != -1;
@@ -113,12 +137,12 @@ namespace ExperimentASR.Services
 
 						if (canReportProgress)
 						{
-							// Report progress every ~1MB or so to avoid spamming UI
 							double progress = Math.Round((double)totalRead / totalBytes * 100, 0);
-							if (totalRead % (1024 * 1024) == 0) // Update every 1MB
+							// Reduce UI updates to every 100KB to prevent lag
+							if (totalRead % (1024 * 100) == 0)
 							{
-								// Using StatusService to notify UI
 								StatusService.Instance.UpdateStatus($"Downloading... {progress}%");
+								StatusService.Instance.SetProgress(progress);
 							}
 						}
 					}
@@ -126,18 +150,25 @@ namespace ExperimentASR.Services
 			}
 		}
 
-		private void ExtractDllFromZip(string zipPath, string fileNameToExtract, string destinationPath)
+		private void ExtractDllFromZip(string zipPath, string targetFileName, string destinationPath)
 		{
 			using (ZipArchive archive = ZipFile.OpenRead(zipPath))
 			{
-				var entry = archive.GetEntry(fileNameToExtract);
+				// We search for the file ending with "whisper.dll" to handle the folder structure:
+				// "whisper-bin-x64/release/whisper.dll"
+				var entry = archive.Entries.FirstOrDefault(e =>
+					e.FullName.EndsWith(targetFileName, StringComparison.OrdinalIgnoreCase));
+
 				if (entry != null)
 				{
+					// Extract to the root application folder (destinationPath)
 					entry.ExtractToFile(destinationPath, overwrite: true);
 				}
 				else
 				{
-					throw new FileNotFoundException($"Could not find {fileNameToExtract} inside the downloaded zip.");
+					// Debugging info if file not found
+					var structure = string.Join("\n", archive.Entries.Select(e => e.FullName));
+					throw new FileNotFoundException($"Could not find '{targetFileName}' in zip.\nContents:\n{structure}");
 				}
 			}
 		}

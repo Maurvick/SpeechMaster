@@ -23,5 +23,20 @@ namespace ExperimentASR.Views
         {
             InitializeComponent();
         }
-    }
+
+        private void BtnDownload_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void BtnCancel_Click(object sender, RoutedEventArgs e)
+        {
+
+		}
+
+        private void BtnBrowse_Click(object sender, RoutedEventArgs e)
+        {
+
+		}
+	}
 }

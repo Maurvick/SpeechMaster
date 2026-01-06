@@ -1,18 +1,12 @@
-﻿using ExperimentASR.Models;
+﻿using System.Diagnostics;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using ExperimentASR.Models;
 using ExperimentASR.Services;
-using ExperimentASR.Services.Engines;
 using ExperimentASR.Views;
 using ExperimentASR.Windows;
 using Microsoft.Win32;
-using NAudio.Wave;
-using Parquet.Schema;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.IO;
-using System.Security.Policy;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
 
 namespace ExperimentASR
 {
@@ -49,6 +43,7 @@ namespace ExperimentASR
 			base.OnClosed(e);
 		}
 
+        // Check python ASR cli location
 		private void GetAsrEngineLocation()
         {
             if (File.Exists(_transcribeSerivce.AsrEngineLocation))
@@ -67,32 +62,6 @@ namespace ExperimentASR
             else
             {
                 txtGPUAcceleration.Text = "GPU Acceleration: No";
-            }
-        }
-
-        private void GetFFMPEGLocation()
-        {
-			// TODO: this is does not work as intended, needs fixing
-			try
-			{
-                ProcessStartInfo processStartInfo = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = "/C set", // This command lists all env vars
-                    UseShellExecute = false, // Must be false to modify Environment
-                    RedirectStandardOutput = true
-                };
-
-                if (processStartInfo.Environment.ContainsKey("FFMPEG"))
-                {
-
-                    txtFFMPEGPath.Text = "FFMPEG Path: " + 
-                        processStartInfo.Environment["FFMPEG"];
-                }
-            }
-            catch
-            {
-                return;
             }
         }
 
@@ -165,10 +134,10 @@ namespace ExperimentASR
                 
         }
 
-        // Start Transcription
-        private async void Transcribe_Click(object sender, RoutedEventArgs e)
+        private async void BtnStartTranscribe_Click(object sender, RoutedEventArgs e)
         {
-            var file = txtAudioFilePath.Text;
+			// TODO: I need to check if all tools are available before starting
+			var file = txtAudioFilePath.Text;
 
             if (string.IsNullOrWhiteSpace(file))
             {
@@ -271,7 +240,6 @@ namespace ExperimentASR
             
         }
 
-        // TODO: implement applying settings to UI
         private void ApplySettingsToUI()
         {
  
@@ -330,13 +298,36 @@ namespace ExperimentASR
                     };
 					progressWindow.Show();
 					await DownloadWhisper();
-                    return;
+                    progressWindow.Close();
+					return;
 				}
 			}
             // Check tools availability
             GetAsrEngineLocation();
-            GetFFMPEGLocation();
-        }
+            if (FFmpegLoader.IsFfmpegAvailableInShell())
+            {
+				txtFFMPEGPath.Text = "FFMPEG: Installed";
+			}
+			else
+			{
+				if (MessageBox.Show("FFMPEG not found in system PATH. Install via winget now?",
+				"FFMPEG Missing", MessageBoxButton.YesNo, MessageBoxImage.Question) ==
+				MessageBoxResult.Yes)
+				{
+					ProgressWindow progressWindow = new ProgressWindow
+					{
+						Owner = this
+					};
+					progressWindow.Show();
+					StatusService.Instance.UpdateStatus("Installing FFMPEG via winget...");
+					await Task.Run(() => FFmpegLoader.InstallFfmpegViaWinget());
+					StatusService.Instance.SetProgress(100);
+					StatusService.Instance.UpdateStatus("System Ready");
+					FFmpegLoader.RefreshEnvironmentPath();
+					progressWindow.Close();
+				}
+			}
+		}
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
@@ -359,7 +350,16 @@ namespace ExperimentASR
             benchmarkWindow.ShowDialog();
         }
 
-        private void menuSettings_Click(object sender, RoutedEventArgs e)
+        private void menuVideoDownloader_Click(object sender, RoutedEventArgs e)
+        {
+            VideoDownloadWindow videoDownloadWindow = new VideoDownloadWindow
+            {
+                Owner = this
+            };
+            videoDownloadWindow.ShowDialog();
+        }
+
+		private void menuSettings_Click(object sender, RoutedEventArgs e)
         {
 			// Initialize your other window (ensure you have created 'DetailsWindow.xaml')
 			var settingsWindow = new SettingsWindow(_settingsManager)

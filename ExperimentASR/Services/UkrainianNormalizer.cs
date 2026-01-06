@@ -5,7 +5,9 @@ using System.Text.RegularExpressions;
 
 namespace ExperimentASR.Services
 {
-    public static class UkrainianNormalizer
+	// TODO: This is need to be improved further
+    // based on specific normalization rules for Ukrainian text.
+	public static class UkrainianNormalizer
     {
         private static readonly Regex Punctuation = new Regex(@"[‚„«»“”'""…]");
         private static readonly Regex MultipleSpaces = new Regex(@"\s+");

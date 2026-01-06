@@ -9,7 +9,7 @@
         mc:Ignorable="d"
         ui:WindowHelper.UseModernWindowStyle="True"
         TextOptions.TextFormattingMode="Display" 
-        Title="MainWindow" Height="720" Width="1280" Loaded="Window_Loaded" Closing="Window_Closing">
+        Title="Transcription" Height="720" Width="1280" Loaded="Window_Loaded" Closing="Window_Closing">
 	<Window.Resources>
 		<SolidColorBrush x:Key="AccentBrush" Color="#0057B7"/>
 		<SolidColorBrush x:Key="AccentLightBrush" Color="#FFD700"/>
@@ -86,6 +86,7 @@
 			<MenuItem Header="_Tools" >
 				<MenuItem Header="_Settings" Click="menuSettings_Click" />
 				<MenuItem Header="_Benchmark" Click="menuBenchmark_Click" />
+				<MenuItem Header="_Download Media" Click="menuVideoDownloader_Click"/>
 				<MenuItem Header="_Logs" Click="menuLogs_Click"/>
 			</MenuItem>
 
@@ -111,10 +112,10 @@
                     Background="{StaticResource AccentBrush}"
                     Foreground="White" FontSize="48" FontWeight="Bold"
                     Content="▶" 
-                    Click="Transcribe_Click"/>
+                    Click="BtnStartTranscribe_Click"/>
 
 					<TextBlock x:Name="blockStartTranscription" Text="Start transcription" 
-                       HorizontalAlignment="Center" FontSize="16" Margin="0,10,0,10"/>
+                       HorizontalAlignment="Center" FontSize="16" Margin="0,10,0,10" FontWeight="Bold"/>
 
 					<TextBlock x:Name="blockImportLocalFile" 
                        Margin="0,10,0,5" Text="Import local file"/>
@@ -129,21 +130,7 @@
 					</Grid>
 
 					<StackPanel VerticalAlignment="Stretch">
-						<StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-
-							<Button x:Name="btnCancelTranscribe" 
-                        Content="Cancel Transcription" 
-                        Background="#D32F2F" 
-                        Foreground="White" 
-                        Click="Transcribe_Click"/>
-
-							<TextBlock x:Name="linkMoreOptions1" VerticalAlignment="Center" Margin="10,0,0,0" IsEnabled="False">            
-                        <Hyperlink x:Name="linkMoreOptions" Click="MoreOptions_Click">
-                            More options...
-                        </Hyperlink>
-							</TextBlock>
-
-						</StackPanel>
+						<StackPanel Orientation="Horizontal" Margin="0,10,0,0"/>
 					</StackPanel>
 
 					<Grid Margin="10">
@@ -154,6 +141,7 @@
 
 						<StackPanel Orientation="Horizontal" Margin="0,0,0,10"/>
 
+						<TextBlock x:Name="blockQueue" Text="Transcription Queue" Margin="0,0,0,10" Grid.Row="0" FontSize="16"/>
 						<DataGrid x:Name="QueueGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" Margin="-10,0,10,0">
 							<DataGrid.Columns>
 								<DataGridTextColumn Header="File Name" Binding="{Binding FileName}" Width="100"/>
@@ -164,25 +152,14 @@
 
 					<Separator Margin="0,20"/>
 
-					<TextBlock FontWeight="SemiBold" Height="21"><Run Text="ASR Models"/><LineBreak/><Run/></TextBlock>
-					<ComboBox x:Name="comboAsrModels" Margin="0,10,0,10" Width="150" Height="35">
-						<ComboBoxItem Content="whisper"/>
-						<ComboBoxItem Content="google_speech_to_text"/>
-						<ComboBoxItem Content="deepspeech"/>
-						<ComboBoxItem Content="vosk"/>
-					</ComboBox>
-
 					<StackPanel VerticalAlignment="Stretch">
-						<StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-							<RadioButton x:Name="radioNative" Content="Native" IsChecked="True" Margin="0,0,10,0" Width="76"/>
-							<RadioButton x:Name="radioPython" Content="Python"/>
-						</StackPanel>
+						<StackPanel Orientation="Horizontal" Margin="0,10,0,0"/>
 					</StackPanel>
 				</StackPanel>
 			</Border>
 
 			<Border x:Name="borderTranscriptOutput" Grid.Column="1" BorderBrush="Gray" BorderThickness="1"
-            CornerRadius="8" Padding="20" Margin="5,0,5,0">
+            CornerRadius="8" Padding="20" Margin="5,0,0,0" Grid.ColumnSpan="2">
 				<Grid>
 					<Grid.RowDefinitions>
 						<RowDefinition Height="*"/>
@@ -195,7 +172,7 @@
                          FontSize="18" 
                          Background="Transparent"
                          BorderThickness="0" IsReadOnly="True"
-                         Text="Transcript result will appear here..." Height="500" Width="625" />
+                         Text="Transcript result will appear here..." Height="500" Width="890" />
 					</ScrollViewer>
 
 					<StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
@@ -206,11 +183,6 @@
                         IsEnabled="False" Click="btnSummarizeText_Click"></Button>
 					</StackPanel>
 				</Grid>
-			</Border>
-
-			<Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1"
-            CornerRadius="8" Padding="16" Margin="10,0,0,0">
-				
 			</Border>
 
 		</Grid>

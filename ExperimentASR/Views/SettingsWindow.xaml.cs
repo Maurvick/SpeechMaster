@@ -19,8 +19,17 @@ namespace ExperimentASR.Views
 
             comboWhisperSize.SelectedItem = comboWhisperSize.Items.Cast<System.Windows.Controls.ComboBoxItem>()
                 .FirstOrDefault(i => (string)i.Content == _settings.WhisperModelSize);
+			// This all case sensitive, so xml content must match exactly
+			// Checking by Tag to avoid issues with localization
+			comboModelImplementation.SelectedItem = comboModelImplementation.Items
+				.Cast<System.Windows.Controls.ComboBoxItem>()
+				.FirstOrDefault(i => (string)i.Tag == _settings.ModelImplementation);
 
-            txtAudioLanguage.Text = _settings.AudioLanguage;
+			// Fallback: If nothing matches (e.g. settings are corrupt), select the first one
+			if (comboModelImplementation.SelectedItem == null)
+				comboModelImplementation.SelectedIndex = 0;
+
+			txtAudioLanguage.Text = _settings.AudioLanguage;
         }
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -35,7 +44,12 @@ namespace ExperimentASR.Views
                 _settings.WhisperModelSize = sizeItem.Content.ToString() ?? _settings.WhisperModelSize;
             }
 
-            _settings.AudioLanguage = string.IsNullOrWhiteSpace(txtAudioLanguage.Text) ? "auto" : txtAudioLanguage.Text.Trim();
+			if (comboModelImplementation.SelectedItem is System.Windows.Controls.ComboBoxItem implementItem)
+			{
+				_settings.ModelImplementation = implementItem.Content.ToString() ?? _settings.ModelImplementation;
+			}
+
+			_settings.AudioLanguage = string.IsNullOrWhiteSpace(txtAudioLanguage.Text) ? "auto" : txtAudioLanguage.Text.Trim();
 
             _settings.SaveSettings();
 
@@ -60,7 +74,10 @@ namespace ExperimentASR.Views
             comboWhisperSize.SelectedItem = comboWhisperSize.Items.Cast<System.Windows.Controls.ComboBoxItem>()
                 .FirstOrDefault(i => (string)i.Content == _settings.WhisperModelSize);
 
-            txtAudioLanguage.Text = _settings.AudioLanguage;
+            comboModelImplementation.SelectedItem = comboModelImplementation.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+                .FirstOrDefault(i => (string)i.Content == _settings.ModelImplementation);
+
+			txtAudioLanguage.Text = _settings.AudioLanguage;
         }
     }
 }

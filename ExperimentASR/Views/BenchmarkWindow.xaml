@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ExperimentASR.Views"
         mc:Ignorable="d"
-        Title="BenchmarkWindow" Height="450" Width="800">
+        Title="Benchmark" Height="450" Width="800">
     <Grid>
 		<Border BorderBrush="Gray" BorderThickness="1"
 CornerRadius="8" Padding="16" Margin="10,10,605,10">
@@ -32,10 +32,10 @@ CornerRadius="8" Padding="16" Margin="10,10,605,10">
 		<DataGrid x:Name="BenchmarkDataGrid" AutoGenerateColumns="False" Margin="211,10,10,10" 
         BorderBrush="Gray" BorderThickness="1" Padding="16">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Модель" Binding="{Binding ModelName}" Width="*"/>
+                <DataGridTextColumn Header="Model" Binding="{Binding ModelName}" Width="*"/>
                 <DataGridTextColumn Header="WER (%)" Binding="{Binding AverageWer, StringFormat={}{0:F2}%}" Width="80"/>
                 <DataGridTextColumn Header="RTF" Binding="{Binding AverageRtf, StringFormat={}{0:F3}x}" Width="70"/>
-                <DataGridTextColumn Header="Тестів" Binding="{Binding TestsCount}" Width="70"/>
+                <DataGridTextColumn Header="Tests" Binding="{Binding TestsCount}" Width="70"/>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>

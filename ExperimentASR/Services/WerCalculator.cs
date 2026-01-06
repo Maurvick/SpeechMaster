@@ -4,7 +4,8 @@ using System.Text;
 
 namespace ExperimentASR.Services
 {
-    public static class WerCalculator
+	// TODO: Implement the Levenshtein distance algorithm to compute WER accurately.
+	public static class WerCalculator
     {
         public static double CalculateWer(string reference, string hypothesis)
         {
@@ -20,8 +21,6 @@ namespace ExperimentASR.Services
 
         private static int LevenshteinDistance(string[] s, string[] t, ref int sCount, ref int dCount, ref int iCount)
         {
-            // класичний алгоритм Вагнера-Фішера для масивів слів
-            // (повний код нижче — 40 рядків)
             throw new NotImplementedException("LevenshteinDistance method is not implemented.");
         }
     }

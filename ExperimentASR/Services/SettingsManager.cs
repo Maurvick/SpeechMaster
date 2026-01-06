@@ -16,7 +16,8 @@ namespace ExperimentASR.Services
 
         public event EventHandler? SettingsChanged;
 
-        public SettingsManager()
+		// TODO: This needs to be rewrited too much hardcoded strings
+		public SettingsManager()
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var folder = Path.Combine(appData, AppFolderName);
@@ -27,15 +28,17 @@ namespace ExperimentASR.Services
             _modelSize = "base";
             _audioLanguage = "auto";
             _asrEngine = "whisper";
-        }
+            _modelImplementation = "native";
+		}
 
         // Backing fields (mutable)
         private string _modelSize;
         private string _audioLanguage;
         private string _asrEngine;
+        private string _modelImplementation;
 
-        // Public properties (read/write)
-        public string WhisperModelSize
+		// Public properties (read/write)
+		public string WhisperModelSize
         {
             get => _modelSize;
             set
@@ -68,7 +71,18 @@ namespace ExperimentASR.Services
             }
         }
 
-        private void OnSettingsChanged()
+        public string ModelImplementation
+        {
+            get => _modelImplementation;
+            set
+            {
+                if (value == _modelImplementation) return;
+                _modelImplementation = value;
+                OnSettingsChanged();
+            }
+		}
+
+		private void OnSettingsChanged()
         {
             SettingsChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -84,7 +98,10 @@ namespace ExperimentASR.Services
 
             [JsonPropertyName("asrEngine")]
             public string AsrEngine { get; set; } = "whisper";
-        }
+
+			[JsonPropertyName("modelImplementation")]
+			public string ModelImplementation { get; set; } = "native";
+		}
 
         public void LoadSettings()
         {
@@ -99,9 +116,11 @@ namespace ExperimentASR.Services
                 _modelSize = persisted.WhisperModelSize ?? _modelSize;
                 _audioLanguage = persisted.AudioLanguage ?? _audioLanguage;
                 _asrEngine = persisted.AsrEngine ?? _asrEngine;
+                _modelImplementation = persisted.ModelImplementation ?? _modelImplementation;
 
-                _logger.LogInfo("Settings loaded: " +
-                    $"ModelSize={_modelSize}, AudioLanguage={_audioLanguage}, AsrEngine={_asrEngine}");
+				_logger.LogInfo("Settings loaded: " +
+                    $"ModelSize={_modelSize}, AudioLanguage={_audioLanguage}, " +
+                    $"AsrEngine={_asrEngine}, ModelImplementation={_modelImplementation}");
 
                 OnSettingsChanged();
             }
@@ -119,8 +138,9 @@ namespace ExperimentASR.Services
                 {
                     WhisperModelSize = _modelSize,
                     AudioLanguage = _audioLanguage,
-                    AsrEngine = _asrEngine
-                };
+                    AsrEngine = _asrEngine,
+					ModelImplementation = _modelImplementation
+				};
 
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 var json = JsonSerializer.Serialize(persisted, options);
@@ -137,7 +157,8 @@ namespace ExperimentASR.Services
             _modelSize = "base";
             _audioLanguage = "auto";
             _asrEngine = "whisper";
-            OnSettingsChanged();
+            _modelImplementation = "native";
+			OnSettingsChanged();
             SaveSettings();
         }
     }
