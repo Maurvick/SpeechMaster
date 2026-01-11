@@ -15,7 +15,7 @@ namespace ExperimentASR.Services
         // Store raw output for error reporting
         private string _rawPythonOutput = "";
 
-        FileLogger _logger = new FileLogger();
+        Logger _logger = new Logger();
 
 		// Path to FFmpeg (ensure this matches where you store it)
 		private readonly string _ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tools", "ffmpeg.exe");
@@ -133,7 +133,6 @@ namespace ExperimentASR.Services
 
 			return combinedResult;
 		}
-    }
 
         private TranscriptionResult ParseOutput(string output, string error)
         {

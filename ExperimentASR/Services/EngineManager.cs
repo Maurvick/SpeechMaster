@@ -23,8 +23,6 @@ namespace ExperimentASR.Services
 			_engines.AddRange(
 			[
 				new WhisperEngine(),
-				new SileroEngine(),
-                new VoskEngine(),
 			]);
 		}
 	}

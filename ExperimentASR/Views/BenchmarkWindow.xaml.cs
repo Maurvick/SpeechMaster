@@ -27,20 +27,14 @@ namespace ExperimentASR.Views
 			StatusService.Instance.UpdateStatus($"{_datasetReader.TestItems.Count} " +
 				$"samples loaded from dataset...");
 
-			engines.AddRange(
-			[
-				new VoskEngine(),
-			]);
-
 			var results = new ObservableCollection<BenchmarkResult>();
 			BenchmarkDataGrid.ItemsSource = results;
 
-			var bench = new BenchmarkRunner();
 			foreach (var engine in engines)
 			{
 				StatusService.Instance.UpdateStatus($"Testing {engine.Name}...");
 
-				var benchmark = await bench.RunEngineBenchmarkAsync(engine, 
+				var benchmark = await BenchmarkRunner.RunEngineBenchmarkAsync(engine, 
 					_datasetReader.TestItems.Take(50));
 				results.Add(benchmark);
 			}

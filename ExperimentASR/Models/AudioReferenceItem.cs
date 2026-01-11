@@ -1,6 +1,6 @@
 ﻿namespace ExperimentASR.Models
 {
-    public class TestItem
+    public class AudioReferenceItem
     {
         public string AudioPath { get; set; }
         public string ReferenceText { get; set; }

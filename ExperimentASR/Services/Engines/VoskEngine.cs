@@ -18,7 +18,7 @@ namespace ExperimentASR.Services.Engines
             SupportsGpu = false;
 
             if (!Directory.Exists(modelPath))
-                throw new DirectoryNotFoundException($"Vosk модель не знайдена: {modelPath}");
+                throw new DirectoryNotFoundException($"Vosk model not found: {modelPath}");
 
             _model = new Model(modelPath);
         }
@@ -29,7 +29,6 @@ namespace ExperimentASR.Services.Engines
             _model?.Dispose();
         }
 
-        // Конвертація будь-якого WAV/MP3 в потрібний формат Vosk
         private byte[] ConvertToPcm16kHz(string inputPath)
         {
             using var reader = new NAudio.Wave.AudioFileReader(inputPath);

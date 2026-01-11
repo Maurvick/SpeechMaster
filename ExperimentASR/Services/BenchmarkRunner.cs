@@ -5,7 +5,7 @@ namespace ExperimentASR.Services
 {
     public static class BenchmarkRunner
     {
-        public static async Task<BenchmarkResult> RunEngineBenchmarkAsync(AsrEngine engine, IEnumerable<TestItem> testItems)
+        public static async Task<BenchmarkResult> RunEngineBenchmarkAsync(AsrEngine engine, IEnumerable<AudioReferenceItem> testItems)
         {
             double totalWer = 0;
             long totalTime = 0;

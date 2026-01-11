@@ -11,7 +11,7 @@ namespace ExperimentASR.Services
 
         private readonly string _settingsFilePath;
 
-        FileLogger _logger = new FileLogger();
+        Logger _logger = new Logger();
 
         public event EventHandler? SettingsChanged;
 

@@ -7,7 +7,7 @@ namespace ExperimentASR.Services
 {
     public class DatasetLoader
     {
-        private readonly List<TestItem> _testItems = new();
+        private readonly List<AudioReferenceItem> _testItems = new();
 
         public async Task LoadDatasetAsync(string path)
         {
@@ -33,7 +33,7 @@ namespace ExperimentASR.Services
 
             foreach (var sample in samples)
             {
-                _testItems.Add(new TestItem
+                _testItems.Add(new AudioReferenceItem
                 {
                     AudioPath = sample.AudioPath,
                     ReferenceText = sample.Transcription
@@ -41,6 +41,6 @@ namespace ExperimentASR.Services
             }
         }
 
-        public IReadOnlyList<TestItem> TestItems => _testItems;
+        public IReadOnlyList<AudioReferenceItem> TestItems => _testItems;
     }
 }

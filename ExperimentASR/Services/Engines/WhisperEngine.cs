@@ -30,8 +30,8 @@ namespace ExperimentASR.Models
             string output = await process.StandardOutput.ReadToEndAsync();
             await process.WaitForExitAsync();
 
-            // whisper.cpp виводить у консоль — парсимо
-            return output.Trim();
+			// whisper.cpp parse ouptput
+			return output.Trim();
         }
     }
 }

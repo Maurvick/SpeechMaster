@@ -1,8 +1,6 @@
 ﻿using System.Diagnostics;
 using System.IO;
 using System.Windows;
-using System.Windows.Controls;
-using ExperimentASR.Models;
 using ExperimentASR.Services;
 using ExperimentASR.Views;
 using ExperimentASR.Windows;
@@ -63,25 +61,6 @@ namespace ExperimentASR
             {
                 txtGPUAcceleration.Text = "GPU Acceleration: No";
             }
-        }
-
-        // TODO: this is unused, remove or implement
-        private async Task UpdateProgressBar()
-        {
-            int audioDurationSeconds = await Task.Run(() => 
-                AudioHelper.GetAudioFileDuration(txtAudioFilePath.Text)).ConfigureAwait(false);
-            if (audioDurationSeconds <= 0) return;
-            int smallModelProccessingTime = 12;
-            double processingSpeed = audioDurationSeconds / (double)smallModelProccessingTime;
-
-            for (int i = 0; i <= audioDurationSeconds; i++)
-            {
-                int progress = (int)((i / (double)audioDurationSeconds) * 100);
-                progressTranscript.Value = Math.Clamp(progress, 0, 100);
-                await Task.Delay(Math.Max(1, (int)(100 / processingSpeed)));
-            }
-
-            await Task.Delay(500);
         }
 
         private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
@@ -222,7 +201,8 @@ namespace ExperimentASR
             }
         }
 
-        private void btnSaveSrt_Click(object sender, RoutedEventArgs e)
+		// TODO: REMOVE THIS METHOD IF NOT NEEDED
+		private void btnSaveSrt_Click(object sender, RoutedEventArgs e)
         {
 
         }
@@ -230,9 +210,10 @@ namespace ExperimentASR
         private void btnSummarizeText_Click(object sender, RoutedEventArgs e)
         {
 
-        }   
+        }
 
-        private void ApplySettingsToUI()
+		// Dummy method to apply settings to UI
+		private void ApplySettingsToUI()
         {
  
         }
@@ -342,8 +323,8 @@ namespace ExperimentASR
 
         private void menuVideoDownloader_Click(object sender, RoutedEventArgs e)
         {
-            VideoDownloadWindow videoDownloadWindow = new VideoDownloadWindow
-            {
+            MediaDownloadWindow videoDownloadWindow = new MediaDownloadWindow
+			{
                 Owner = this
             };
             videoDownloadWindow.ShowDialog();

@@ -23,7 +23,7 @@
         </StackPanel>
 
 		<StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
-			<TextBlock Width="120" VerticalAlignment="Center">Whisper model size:</TextBlock>
+			<TextBlock Width="120" VerticalAlignment="Center" FontSize="10">Whisper model size:</TextBlock>
 			<ComboBox x:Name="comboWhisperSize" Width="200">
 				<ComboBoxItem Content="tiny"/>
 				<ComboBoxItem Content="base"/>
