@@ -15,11 +15,26 @@ namespace SpeechMaster.Views
     /// <summary>
     /// Interaction logic for TranscriptionItemWindow.xaml
     /// </summary>
-    public partial class TranscriptionItemWindow : Window
+    public partial class TranscriptionDetailWindow : Window
     {
-        public TranscriptionItemWindow()
+        public TranscriptionDetailWindow()
         {
             InitializeComponent();
         }
-    }
+
+        private void BtnCopy_Click(object sender, RoutedEventArgs e)
+        {
+
+		}
+
+        private void BtnSave_Click(object sender, RoutedEventArgs e)
+        {
+
+		}
+
+        private void BtnClose_Click(object sender, RoutedEventArgs e)
+        {
+
+		}
+	}
 }

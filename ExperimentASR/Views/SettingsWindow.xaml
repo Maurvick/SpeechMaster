@@ -27,11 +27,11 @@
 		<StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
 			<TextBlock Width="120" VerticalAlignment="Center" FontSize="10">Whisper model size:</TextBlock>
 			<ComboBox x:Name="comboWhisperSize" Width="200">
-				<ComboBoxItem Content="tiny"/>
+				<ComboBoxItem Content="tiny" IsEnabled="False"/>
 				<ComboBoxItem Content="base"/>
-				<ComboBoxItem Content="small"/>
-				<ComboBoxItem Content="medium"/>
-				<ComboBoxItem Content="large"/>
+				<ComboBoxItem Content="small" IsEnabled="False"/>
+				<ComboBoxItem Content="medium" IsEnabled="False"/>
+				<ComboBoxItem Content="large" IsEnabled="False"/>
 			</ComboBox>
 		</StackPanel>
 

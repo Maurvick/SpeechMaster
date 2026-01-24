@@ -1,6 +1,8 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using ExperimentASR.Views;
 using ExperimentASR.Windows;
 using Microsoft.Win32;
@@ -16,14 +18,18 @@ namespace SpeechMaster
     {
         private readonly TranscribeService _transcribeSerivce = new();
         private readonly SettingsManager _settingsManager = new();
-        private readonly TranscriptionQueueManager _manager = new();
-        private readonly EngineSetupService _setupService = new();
+        private readonly TranscriptionQueueManager _queueManager = new();
+        private readonly EngineManager _setupService = new();
 
-        public MainWindow()
+		public ObservableCollection<TranscriptionHistoryItem> ProcessedItems { get; set; }
+
+		public MainWindow()
         {
             InitializeComponent();
             // Bind the DataGrid to queue manager list
-            QueueGrid.ItemsSource = _manager.Jobs;
+            QueueGrid.ItemsSource = _queueManager.Jobs;
+			ProcessedItems = new ObservableCollection<TranscriptionHistoryItem>();
+			HistoryGrid.ItemsSource = ProcessedItems;
 		}
 
 		private void UpdateStatusText(string message)
@@ -64,7 +70,49 @@ namespace SpeechMaster
             }
         }
 
-        private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
+		// --- LIST UPDATE LOGIC ---
+
+		private void AddToHistory(string filePath, string text)
+		{
+			var newItem = new TranscriptionHistoryItem
+			{
+				FileName = System.IO.Path.GetFileName(filePath),
+				FullPath = filePath,
+				TranscriptText = text,
+				ProcessedDate = DateTime.Now
+			};
+
+			// Оновлюємо UI (обов'язково через Dispatcher, якщо подія з іншого потоку)
+			Dispatcher.Invoke(() =>
+			{
+				ProcessedItems.Insert(0, newItem); // Додаємо на початок списку
+
+				// Автоматично вибираємо новий елемент, щоб показати текст
+				HistoryGrid.SelectedItem = newItem;
+			});
+		}
+
+		private void OnTranscriptionFinished(object sender, TranscriptionFinishedEventArgs e)
+		{
+			if (e.Result.Status == "success")
+			{
+                AddToHistory(_queueManager.Jobs[0].FilePath, e.Result.Text);
+			}
+		}
+
+		// --- Event Handlers ---
+
+		private void HistoryGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		{
+			if (HistoryGrid.SelectedItem is TranscriptionHistoryItem selectedItem)
+			{
+				boxTranscriptOutput.Text = selectedItem.TranscriptText;
+
+				txtSelectedFileStats.Text = $"File: {selectedItem.FileName} | Chars: {selectedItem.TranscriptText.Length}";
+			}
+		}
+
+		private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
         {
             // Marshals to UI thread and start indeterminate progress
             Dispatcher.Invoke(() =>
@@ -99,7 +147,7 @@ namespace SpeechMaster
                     // Multiple files selected - add to queue
                     foreach (var file in ofd.FileNames)
                     {
-                        _manager.AddFile(file);
+                        _queueManager.AddFile(file);
                     }
                     txtAudioFilePath.Text = $"{ofd.FileNames.Length} files added to queue.";
                 }
@@ -108,7 +156,7 @@ namespace SpeechMaster
                     // Single file selected
                     var file = ofd.FileName;
                     txtAudioFilePath.Text = file;
-                    _manager.AddFile(file);
+                    _queueManager.AddFile(file);
                 }
             }
                 
@@ -131,8 +179,8 @@ namespace SpeechMaster
             try
             {
                 // Initiate transcription via TranscribeService
-                await _manager.StartProcessing();
-                var currentJob = _manager.Jobs.First();
+                await _queueManager.StartProcessing();
+                var currentJob = _queueManager.Jobs.First();
 
                 if (currentJob == null)
                 {
@@ -179,7 +227,7 @@ namespace SpeechMaster
 
         private void BtnCancelTranscribe_Click(object sender, RoutedEventArgs e)
         {
-            _manager.CancelProcessing();
+            _queueManager.CancelProcessing();
         }
 
         private void BtnCopyText_Click(object sender, RoutedEventArgs e)
@@ -248,7 +296,7 @@ namespace SpeechMaster
             _transcribeSerivce.TranscriptionFinished += TranscribeService_TranscriptionFinished;
             // Subscribe to status updates
             StatusService.Instance.OnStatusChanged += UpdateStatusText;
-            if (!_setupService.IsEngineInstalled() &&
+            if (!_setupService.IsWhisperEngineInstalled() &&
                 MessageBox.Show("Whisper ASR engine not found. Download and install it now?",
                     "Engine Missing", MessageBoxButton.YesNo, MessageBoxImage.Question) ==
                 MessageBoxResult.Yes)

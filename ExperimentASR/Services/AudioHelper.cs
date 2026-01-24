@@ -11,7 +11,5 @@ namespace SpeechMaster.Services
             TimeSpan duration = reader.TotalTime;
             return (int)duration.TotalSeconds;
         }
-
-		// TODO: Implement audio splicing functionality
 	}
 }

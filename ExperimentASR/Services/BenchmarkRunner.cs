@@ -1,5 +1,4 @@
 ﻿using SpeechMaster.Models;
-using SpeechMaster.Models.Transcription;
 using System.Diagnostics;
 
 namespace SpeechMaster.Services
@@ -14,7 +13,7 @@ namespace SpeechMaster.Services
 		}
 
 		public async Task<List<BenchmarkResult>> RunBenchmarkAsync(List<IAsrEngine> engines, 
-            List<TestItem> testItems)
+            List<DatasetItem> testItems)
         {
             var results = new List<BenchmarkResult>();
 
@@ -60,7 +59,6 @@ namespace SpeechMaster.Services
                 });
             }
 
-            // Збереження результатів бенчмарку
             await _historyService.SaveBenchmarkAsync("Common Voice uk", results);
 
             return results;

@@ -7,7 +7,7 @@ namespace ExperimentASR.Views
     public partial class SettingsWindow : Window
     {
         private readonly SettingsManager _settings;
-        private readonly EngineSetupService _setupService = new();
+        private readonly EngineManager _setupService = new();
 
         public SettingsWindow(SettingsManager settings)
         {
@@ -32,7 +32,7 @@ namespace ExperimentASR.Views
 
 			txtAudioLanguage.Text = _settings.AudioLanguage;
 
-            if (_setupService.IsEngineInstalled())
+            if (_setupService.IsWhisperEngineInstalled())
             {
                 LblWhisperVersion.Text = "Whisper DLL: Installed";
                 BtnOpenWhisperFolder.Visibility = Visibility.Visible;

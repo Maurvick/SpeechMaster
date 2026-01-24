@@ -1,188 +1,158 @@
-﻿using System;
-using System.IO;
-using System.Reflection;
-using Xunit;
-using FluentAssertions;
+﻿using Xunit;
+using FluentAssertions; // Use NuGet: FluentAssertions
 using SpeechMaster.Services;
 using SpeechMaster.Models.Transcription;
+using System.Text.Json;
+using System.IO;
 
 namespace SpeechMaster.Tests
 {
-    public class TranscribeServiceTests
-    {
-        // ---------------------------------------------------------
-        // SECTION 1: Validation Tests (Public Methods)
-        // ---------------------------------------------------------
+	public class TranscribeServiceTests
+	{
+		private readonly TranscribeService _service;
 
-        [Fact]
-        public void Transcribe_ShouldThrowFileNotFound_WhenAudioFileDoesNotExist()
-        {
-            // Arrange
-            var service = new TranscribeService();
-            string nonExistentFile = "ghost_audio.wav";
+		public TranscribeServiceTests()
+		{
+			// Note: This relies on SettingsManager working in the test env.
+			// If SettingsManager fails, you might need to mock it or create a dummy settings file.
+			_service = new TranscribeService();
+		}
 
-            // Act
-            Action act = () => service.Transcribe(nonExistentFile);
+		// ---------------------------------------------------------
+		// 1. VALIDATION TESTS
+		// ---------------------------------------------------------
 
-            // Assert
-            act.Should().Throw<FileNotFoundException>()
-               .WithMessage("Audio file not found.");
-        }
+		[Fact]
+		public void Transcribe_ShouldThrowException_WhenFileDoesNotExist()
+		{
+			// Arrange
+			string fakePath = "C:\\NonExistentFile.wav";
 
-        [Fact]
-        public void Transcribe_ShouldThrowFileNotFound_WhenScriptDoesNotExist()
-        {
-            // Note: This test relies on the internal path "./Scripts/asr_engine.py" NOT existing 
-            // relative to where the Test Runner executes. 
-            // If you actually have that file in your test bin folder, this test might fail.
+			// Act
+			Action act = () => _service.Transcribe(fakePath);
 
-            // Arrange
-            var service = new TranscribeService();
-            // We create a dummy audio file so we pass the first check
-            var tempAudio = Path.GetTempFileName();
+			// Assert
+			act.Should().Throw<FileNotFoundException>()
+			   .WithMessage("*Audio file not found*");
+		}
 
-            try
+		// ---------------------------------------------------------
+		// 2. PARSING LOGIC TESTS (The most important part)
+		// ---------------------------------------------------------
+
+		[Fact]
+		public void ParseWhisperCppJson_ShouldParseValidJson_Correctly()
+		{
+			// Arrange
+			string json = @"
             {
-                // Act
-                Action act = () => service.Transcribe(tempAudio);
+                ""transcription"": [
+                    { ""from"": 0.0, ""to"": 2.5, ""text"": ""Hello world"" },
+                    { ""from"": 2.5, ""to"": 5.0, ""text"": "" This is a test"" }
+                ]
+            }";
 
-                // Assert
-                // We expect it to fail finding the python script
-                act.Should().Throw<FileNotFoundException>()
-                   .WithMessage("*asr.py not found*");
-            }
-            finally
+			// Act
+			var result = _service.ParseWhisperCppJson(json);
+
+			// Assert
+			result.Status.Should().Be("success");
+			result.Segments.Should().HaveCount(2);
+			result.Text.Should().Be("Hello world This is a test");
+
+			// Check specific segment details
+			result.Segments[0].Start.Should().Be(0.0);
+			result.Segments[0].End.Should().Be(2.5);
+			result.Segments[0].Text.Should().Be("Hello world");
+		}
+
+		[Fact]
+		public void ParseWhisperCppJson_ShouldHandleStringTimestamps()
+		{
+			// Whisper sometimes returns strings "00:00:01,500" or "1.5"
+			// Arrange
+			string json = @"
             {
-                if (File.Exists(tempAudio)) File.Delete(tempAudio);
-            }
-        }
+                ""transcription"": [
+                    { ""from"": ""00:00:01.500"", ""to"": ""00:00:03.000"", ""text"": ""String Time"" }
+                ]
+            }";
 
-        [Fact]
-        public void Transcribe_ShouldFire_TranscriptionStarted_Event()
-        {
-            // Arrange
-            var service = new TranscribeService();
-            var tempAudio = Path.GetTempFileName();
-            bool eventFired = false;
+			// Act
+			var result = _service.ParseWhisperCppJson(json);
 
-            service.TranscriptionStarted += (sender, args) => { eventFired = true; };
+			// Assert
+			result.Segments.Should().HaveCount(1);
+			result.Segments[0].Start.Should().Be(1.5);
+			result.Segments[0].End.Should().Be(3.0);
+		}
 
-            // Act
-            try
-            {
-                // This will likely throw FileNotFound for the script, 
-                // but the event fires BEFORE the script check in your code?
-                // Looking at your code: File checks happen first. 
-                // So we need to ensure the script validation passes to test the event, 
-                // or we accept that we can't test this event easily without Refactoring.
+		[Fact]
+		public void ParseWhisperCppJson_ShouldHandleMalformedJson_Gracefully()
+		{
+			// Arrange
+			string badJson = "{ \"transcription\": [ ... BROKEN JSON ... }";
 
-                // However, based on your code order: 
-                // 1. Check Audio (We have temp file)
-                // 2. Check Script (If this fails, event won't fire)
-                // 3. Fire Event.
+			// Act
+			var result = _service.ParseWhisperCppJson(badJson);
 
-                // Therefore, this test is only valid if the script actually exists.
-                // Leaving this commented out as a placeholder for when you have the environment set up.
-                // service.Transcribe(tempAudio);
-            }
-            catch { }
+			// Assert
+			result.Status.Should().Be("error");
+			result.Message.Should().Contain("JSON Parsing failed");
+		}
 
-            // Assert
-            // eventFired.Should().BeTrue();
-        }
+		[Fact]
+		public void ParseWhisperCppJson_ShouldHandleEmptyTranscription()
+		{
+			// Arrange
+			string json = "{ \"transcription\": [] }";
 
-        // ---------------------------------------------------------
-        // SECTION 2: Logic Tests (Testing Private Method via Reflection)
-        // ---------------------------------------------------------
+			// Act
+			var result = _service.ParseWhisperCppJson(json);
 
-        // Helper method: Parameter names are 'output' and 'error'
-        private TranscriptionResult CallParseOutput(TranscribeService service, string output, string error)
-        {
-            var methodInfo = typeof(TranscribeService).GetMethod("ParseOutput", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (methodInfo == null) throw new Exception("Method ParseOutput not found");
+			// Assert
+			result.Status.Should().Be("success");
+			result.Segments.Should().BeEmpty();
+			result.Text.Should().BeEmpty();
+		}
 
-            return (TranscriptionResult)methodInfo.Invoke(service, new object[] { output, error });
-        }
+		// ---------------------------------------------------------
+		// 3. TIME EXTRACTION LOGIC
+		// ---------------------------------------------------------
 
-        [Fact]
-        public void ParseOutput_ShouldReturnSuccess_WhenJsonIsValid()
-        {
-            // Arrange
-            var service = new TranscribeService();
-            string jsonOutput = "{ \"Status\": \"ok\", \"Transcript\": \"Hello world\" }";
-            string errorOutput = "";
+		[Theory]
+		[InlineData("1.5", 1.5)]
+		[InlineData("0", 0.0)]
+		[InlineData("00:00:10", 10.0)] // TimeSpan parsing
+		public void ExtractTime_ShouldParseVariousFormats(string input, double expected)
+		{
+			// Arrange
+			// We need to construct a JsonElement to pass to the method.
+			// This is a bit hacky but works for unit testing logic.
+			string json = $"{{ \"time\": \"{input}\" }}";
+			using (JsonDocument doc = JsonDocument.Parse(json))
+			{
+				var root = doc.RootElement;
 
-            // Act
-            var result = CallParseOutput(service, jsonOutput, errorOutput);
+				// Act
+				double result = _service.ExtractTime(root, "time");
 
-            // Assert
-            result.Status.Should().Be("success"); // Your logic normalizes "ok" to "success"
-            result.Text.Should().Be("Hello world");
-        }
+				// Assert
+				result.Should().Be(expected);
+			}
+		}
 
-        [Fact]
-        public void ParseOutput_ShouldHandle_CaseInsensitiveJson()
-        {
-            // Arrange
-            var service = new TranscribeService();
-            // "status" is lowercase here
-            string jsonOutput = "{ \"status\": \"ok\", \"transcript\": \"Testing casing\" }";
-
-            // Act
-            // FIXED: Removed the incorrect 'errorOutput:' name. 
-            // We just pass empty string as the 3rd argument.
-            var result = CallParseOutput(service, jsonOutput, "");
-
-            // Assert
-            result.Status.Should().Be("success");
-            result.Text.Should().Be("Testing casing");
-        }
-
-        [Fact]
-        public void ParseOutput_ShouldReturnError_WhenOutputIsEmpty()
-        {
-            // Arrange
-            var service = new TranscribeService();
-            string jsonOutput = ""; // Python crashed silently
-            string errorOutput = "ImportError: No module named torch";
-
-            // Act
-            var result = CallParseOutput(service, jsonOutput, errorOutput);
-
-            // Assert
-            result.Status.Should().Be("error");
-            result.Message.Should().Contain("Python error: ImportError");
-        }
-
-        [Fact]
-        public void ParseOutput_ShouldReturnError_WhenJsonIsMalformed()
-        {
-            // Arrange
-            var service = new TranscribeService();
-            string jsonOutput = "{ \"Status\": \"ok\", \"Transcript\": ... BROKEN JSON ... }";
-
-            // Act
-            var result = CallParseOutput(service, jsonOutput, "");
-
-            // Assert
-            result.Status.Should().Be("error");
-            result.Message.Should().Contain("Invalid JSON format");
-        }
-
-        [Fact]
-        public void ParseOutput_ShouldReturnError_WhenStatusFieldIsMissing()
-        {
-            // Arrange
-            var service = new TranscribeService();
-            // Valid JSON, but missing business logic requirements
-            string jsonOutput = "{ \"Transcript\": \"I have no status\" }";
-
-            // Act
-            var result = CallParseOutput(service, jsonOutput, "");
-
-            // Assert
-            result.Status.Should().Be("error");
-            result.Message.Should().Contain("found no 'status' field");
-        }
-    }
+		[Fact]
+		public void ExtractTime_ShouldParseNumericJson()
+		{
+			// Arrange
+			string json = "{ \"time\": 42.5 }";
+			using (JsonDocument doc = JsonDocument.Parse(json))
+			{
+				var root = doc.RootElement;
+				double result = _service.ExtractTime(root, "time");
+				result.Should().Be(42.5);
+			}
+		}
+	}
 }

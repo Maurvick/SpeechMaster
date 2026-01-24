@@ -226,7 +226,7 @@ namespace SpeechMaster.Services
 			}
 		}
 
-		private TranscriptionResult ParseWhisperCppJson(string jsonContent)
+		public TranscriptionResult ParseWhisperCppJson(string jsonContent)
 		{
 			try
 			{
@@ -263,7 +263,7 @@ namespace SpeechMaster.Services
 			}
 		}
 
-		private double ExtractTime(JsonElement element, string propertyName)
+		public double ExtractTime(JsonElement element, string propertyName)
 		{
 			if (element.TryGetProperty(propertyName, out JsonElement val))
 			{

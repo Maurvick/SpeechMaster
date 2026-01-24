@@ -46,8 +46,6 @@
 					</StackPanel>
 
 					<StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-						
-
 						<Border Width="1" Background="#FFCCCCCC" Margin="10,2"/>
 
 						<TextBlock x:Name="txtGPUAcceleration" Text="GPUAcceleration" VerticalAlignment="Center"/>
@@ -55,9 +53,6 @@
 						<Border Width="1" Background="#FFCCCCCC" Margin="10,2"/>
 
 						<TextBlock x:Name="txtFFMPEGPath" Text="FFMPEG" VerticalAlignment="Center"/>
-
-
-
 					</StackPanel>
 				</Grid>
 			</StatusBarItem>
@@ -114,8 +109,10 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="txtAudioFilePath" IsReadOnly="True" VerticalContentAlignment="Center"/>
-                        <Button x:Name="btnFileSelect" Grid.Column="1" Content="📁" Width="40" Margin="5,0,0,0" Click="BtnSelectFile_Click"/>
+                        <TextBox x:Name="txtAudioFilePath" IsReadOnly="True" 
+						VerticalContentAlignment="Center"/>
+                        <Button x:Name="btnFileSelect" Grid.Column="1" 
+						Content="📁" Width="40" Margin="5,0,0,0" Click="BtnSelectFile_Click"/>
                     </Grid>
 
                     <Separator Height="20"/>
@@ -140,37 +137,68 @@
                 </StackPanel>
             </Border>
 
-            <Border x:Name="borderTranscriptOutput" 
-            Grid.Column="1" 
-            BorderBrush="Gray" 
-            BorderThickness="1"
-            CornerRadius="8" 
-            Padding="20" 
-            Margin="0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+			<Grid Grid.Column="1" Margin="10,0,0,0">
+				<Grid.RowDefinitions>
+					<RowDefinition Height="1*" MinHeight="150"/>
+					<RowDefinition Height="5"/>
+					<RowDefinition Height="2*" MinHeight="150"/>
+				</Grid.RowDefinitions>
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="0">
-                        <TextBox x:Name="boxTranscriptOutput" 
-                         TextWrapping="Wrap" AcceptsReturn="True"
-                         FontSize="18" 
-                         Background="Transparent"
-                         BorderThickness="0" IsReadOnly="True"
-                         Text="Transcript result will appear here..." 
-                         HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-                    </ScrollViewer>
+				<Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" CornerRadius="8" Background="White">
+					<Grid>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="*"/>
+						</Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                        <Button x:Name="btnCopy" Content="Copy" Margin="0,0,5,0" 
-                        Click="BtnCopyText_Click" ToolTip="Copies transcription to your text buffer"/>
-                        <Button x:Name="btnSaveTxt" Content="Save TXT" Margin="0,0,5,0" 
-                        Click="BtnSaveTxt_Click" ToolTip="Opens file dialog to save transcript locally"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-        </Grid>
+						<TextBlock Text="Processed History" FontWeight="Bold" Margin="10,10,0,5"/>
+
+						<DataGrid x:Name="HistoryGrid" Grid.Row="1" 
+                                  AutoGenerateColumns="False" 
+                                  IsReadOnly="True" 
+                                  HeadersVisibility="Column"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  SelectionMode="Single"
+                                  SelectionChanged="HistoryGrid_SelectionChanged">
+							<DataGrid.Columns>
+								<DataGridTextColumn Header="Time" Binding="{Binding DisplayDate}" Width="120"/>
+								<DataGridTextColumn Header="File Name" Binding="{Binding FileName}" Width="*"/>
+							</DataGrid.Columns>
+						</DataGrid>
+					</Grid>
+				</Border>
+
+				<GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#F0F0F0" ShowsPreview="True"/>
+
+				<Border Grid.Row="2" x:Name="borderTranscriptOutput" 
+                        BorderBrush="Gray" BorderThickness="1" CornerRadius="8" 
+                        Padding="10" Background="White">
+					<Grid>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="*"/>
+							<RowDefinition Height="Auto"/>
+						</Grid.RowDefinitions>
+
+						<ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+							<TextBox x:Name="boxTranscriptOutput" 
+                                     TextWrapping="Wrap" AcceptsReturn="True"
+                                     FontSize="16" 
+                                     Background="Transparent"
+                                     BorderThickness="0" IsReadOnly="True"
+                                     Text="Select a file from the list above to view transcription..." 
+                                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+						</ScrollViewer>
+
+						<StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+							<TextBlock x:Name="txtSelectedFileStats" VerticalAlignment="Center" Foreground="Gray" Margin="0,0,20,0" FontStyle="Italic"/>
+
+							<Button x:Name="btnCopy" Content="Copy Text" Margin="0,0,5,0" Click="BtnCopyText_Click"/>
+							<Button x:Name="btnSaveTxt" Content="Save to TXT" Click="BtnSaveTxt_Click"/>
+						</StackPanel>
+					</Grid>
+				</Border>
+			</Grid>
+		</Grid>
     </DockPanel>
 </Window>
