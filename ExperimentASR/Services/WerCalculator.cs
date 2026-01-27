@@ -1,5 +1,6 @@
 ﻿namespace SpeechMaster.Services
 {
+	// FIXME: Unused class for benchmarking WER/CER calculations
 	public static class WerCalculator
 	{
 		// Modified Levenshtein for WER calculation [Graves et al., 2006, adapted]
@@ -16,7 +17,7 @@
 			{
 				for (int j = 1; j <= n; j++)
 				{
-					int cost = refWords[i - 1] == hypWords[j - 1] ? 0 : 1; // Враховуємо нормалізовані слова
+					int cost = refWords[i - 1] == hypWords[j - 1] ? 0 : 1;
 					dp[i, j] = Math.Min(Math.Min(dp[i - 1, j] + 1, dp[i, j - 1] + 1), dp[i - 1, j - 1] + cost);
 				}
 			}

@@ -12,6 +12,7 @@ namespace SpeechMaster.Services
             return (int)duration.TotalSeconds;
         }
 
-		// TODO: Implement audio splicing functionality
+		// FIXME: Extract audio from video files
+
 	}
 }

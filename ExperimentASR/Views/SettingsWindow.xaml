@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 		xmlns:ui="http://schemas.modernwpf.com/2019"
 		ui:WindowHelper.UseModernWindowStyle="True"
+		KeyboardNavigation.TabNavigation="Cycle"
         Title="Settings" Height="450" Width="360" WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
     <Grid Margin="12">
         <Grid.RowDefinitions>
@@ -18,47 +19,47 @@
 
         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
             <TextBlock Width="120" VerticalAlignment="Center">ASR Engine:</TextBlock>
-            <ComboBox x:Name="comboAsrEngine" Width="200">
+			<ComboBox x:Name="comboAsrEngine" Width="200" TabIndex="0">
                 <ComboBoxItem Content="whisper"/>
-                <ComboBoxItem Content="vosk"/>
-                <ComboBoxItem Content="silero"/>
-            </ComboBox>
+				<ComboBoxItem Content="vosk" IsEnabled="False"/>
+			</ComboBox>
         </StackPanel>
 
 		<StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
 			<TextBlock Width="120" VerticalAlignment="Center" FontSize="10">Whisper model size:</TextBlock>
-			<ComboBox x:Name="comboWhisperSize" Width="200">
-				<ComboBoxItem Content="tiny"/>
+			<ComboBox x:Name="comboWhisperSize" Width="200" TabIndex="1">
+				<ComboBoxItem Content="tiny" IsEnabled="False"/>
 				<ComboBoxItem Content="base"/>
-				<ComboBoxItem Content="small"/>
-				<ComboBoxItem Content="medium"/>
-				<ComboBoxItem Content="large"/>
+				<ComboBoxItem Content="small" IsEnabled="False"/>
+				<ComboBoxItem Content="medium" IsEnabled="False"/>
+				<ComboBoxItem Content="large" IsEnabled="False"/>
 			</ComboBox>
 		</StackPanel>
 
 		<StackPanel Orientation="Horizontal" Grid.Row="2" Margin="0,0,0,8">
 			<TextBlock Width="120" VerticalAlignment="Center">Implementation:</TextBlock>
-			<ComboBox x:Name="comboModelImplementation" Width="200">
+			<ComboBox x:Name="comboModelImplementation" Width="200" TabIndex="2">
 				<ComboBoxItem Tag="native" Content="Native (.NET) Libraries"/>
-				<ComboBoxItem Tag="python" Content="Python Libraries"/>
+				<ComboBoxItem Tag="python" Content="Python Libraries" IsEnabled="False"/>
 			</ComboBox>
 		</StackPanel>
 
 		<StackPanel Orientation="Horizontal" Grid.Row="3" Margin="0,0,0,8">
 			<TextBlock Width="120" VerticalAlignment="Center">Audio language:</TextBlock>
-			<TextBox x:Name="txtAudioLanguage" Width="200" Height="90" />
+			<TextBox x:Name="txtAudioLanguage" Width="200" Height="90" IsEnabled="False" TabIndex="3" />
 		</StackPanel>
 
 		<StackPanel Orientation="Horizontal" Grid.Row="4" Margin="0,0,0,8">
-            <TextBlock Width="120" VerticalAlignment="Center" FontSize="10">
+            <TextBlock x:Name="LblWhisperVersion" Width="120" VerticalAlignment="Center" FontSize="10">
 				Whisper version: None
             </TextBlock>
 			
             <Button x:Name="BtnDownloadWhisperModel" Grid.Column="1" Content="Download"
                     Width="80" Margin="0,0,0,0" Click="BtnDownloadWhisperModel_Click" Visibility="Hidden"/>
 
-            <Button x:Name="BtnOpenWhisperFolder" Grid.Column="1" Content="📁" 
-				Width="40" Margin="5,0,0,0" Click="BtnOpenWhisperFolder_Click" Visibility="Hidden"/>
+			<Button x:Name="BtnOpenWhisperFolder" Grid.Column="1" Content="📁" TabIndex="4"
+				Width="40" Margin="5,0,0,0" Click="BtnOpenWhisperFolder_Click" 
+				ToolTip="Open Whisper DLL folder"/>
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Grid.Row="5" Margin="0,0,0,8">
@@ -71,11 +72,10 @@
 				Width="40" Margin="5,0,0,0" Click="BtnOpenVoskFolder_Click" Visibility="Hidden"/>
         </StackPanel>
 
-
         <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
 			<Button x:Name="btnReset" Width="80" Margin="0,0,8,0" Click="BtnReset_Click">Reset</Button>
 			<Button x:Name="btnCancel" Width="80" Margin="0,0,8,0" Click="BtnCancel_Click">Cancel</Button>
-			<Button x:Name="btnSave" Width="80" Click="BtnSave_Click">Save</Button>
+			<Button x:Name="btnSave" Width="80" Click="BtnSave_Click" TabIndex="5">Save</Button>
 		</StackPanel>
 	</Grid>
 </Window>

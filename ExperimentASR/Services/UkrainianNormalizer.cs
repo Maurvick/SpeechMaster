@@ -2,8 +2,6 @@
 
 namespace SpeechMaster.Services
 {
-    // TODO: This is need to be improved further
-    // based on specific normalization rules for Ukrainian text.
     public static class UkrainianNormalizer
     {
         private static readonly Regex Punctuation = new(@"[.,!?;:""„”«»—–-]", RegexOptions.Compiled);

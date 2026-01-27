@@ -9,11 +9,12 @@ namespace ExperimentASR.Views
 	/// </summary>
 	public partial class MediaDownloadWindow : Window
     {
+		// TODO: Currently unused. Implement download functionality.
+		// TODO: Support multiple video download.
 		private readonly List<string> allowedLinks = new()
 			{
 			"youtube.com",
 		};
-
 
 		public MediaDownloadWindow()
         {

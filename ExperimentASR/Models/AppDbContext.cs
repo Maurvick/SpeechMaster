@@ -13,7 +13,6 @@ namespace SpeechMaster.Models
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
-			// Опціонально: налаштування дати як рядок ISO 8601
 			modelBuilder.Entity<TranscriptionEntry>()
 				.Property(e => e.DateTime)
 				.HasConversion(v => v.ToString("o"), v => DateTime.Parse(v));

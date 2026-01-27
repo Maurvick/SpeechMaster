@@ -15,7 +15,7 @@ namespace SpeechMaster.Services
 
         public event EventHandler? SettingsChanged;
 
-		// TODO: This needs to be rewrited too much hardcoded strings
+		// TODO: This needs to be rewrited too many hardcoded strings
 		public SettingsManager()
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);

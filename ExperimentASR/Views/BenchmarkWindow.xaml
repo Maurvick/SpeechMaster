@@ -10,7 +10,7 @@
         Title="Benchmark" Height="450" Width="800">
     <Grid>
 		<Border BorderBrush="Gray" BorderThickness="1"
-CornerRadius="8" Padding="16" Margin="10,10,605,10">
+CornerRadius="8" Padding="16" Margin="10,10,439,10">
 			<StackPanel Margin="0,0,0,47">
 				<TextBlock x:Name="blockWaveform" Text="Waveform" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
@@ -25,13 +25,11 @@ CornerRadius="8" Padding="16" Margin="10,10,605,10">
 
 				<TextBlock x:Name="blockAccuracyWer" Text="Accuracy (WER):" Margin="0,20,0,0"/>
 				<TextBlock x:Name="blockAccuracyPercent" Text="-- %" FontSize="20" Foreground="#4CAF50"/>
-				<Grid Height="100">
-					<Button x:Name="btnBenchmark" Content="Benchmark" Click="BtnBenchmark_Click" Margin="10,10,0,0" VerticalAlignment="Top"/>
-				</Grid>
+				<Button x:Name="btnBenchmark" Content="Benchmark" Click="BtnBenchmark_Click"/>
 			</StackPanel>
 		</Border>
 
-		<DataGrid x:Name="BenchmarkDataGrid" AutoGenerateColumns="False" Margin="211,10,10,10" 
+		<DataGrid x:Name="BenchmarkDataGrid" AutoGenerateColumns="False" Margin="400,10,10,10" 
         BorderBrush="Gray" BorderThickness="1" Padding="16">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Model" Binding="{Binding ModelName}" Width="*"/>

@@ -7,6 +7,7 @@ using SpeechMaster.Models.Transcription;
 
 namespace SpeechMaster.Services
 {
+	// FIXME: Incompleted class. Needs implementation or removal.
 	public class HistoryService
 	{
 		private readonly AppDbContext _context;

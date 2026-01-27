@@ -9,6 +9,7 @@ namespace SpeechMaster.Services
 		private readonly object _lock = new object();
 		private const int MaxFileSizeBytes = 5 * 1024 * 1024; // 5 MB Limit
 
+		// FIXME: This is writes multiple times to the log file.
 		public Logger()
 		{
 			_filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs.txt");

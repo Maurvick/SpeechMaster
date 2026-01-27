@@ -1,6 +1,8 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using ExperimentASR.Views;
 using ExperimentASR.Windows;
 using Microsoft.Win32;
@@ -16,14 +18,18 @@ namespace SpeechMaster
     {
         private readonly TranscribeService _transcribeSerivce = new();
         private readonly SettingsManager _settingsManager = new();
-        private readonly TranscriptionQueueManager _manager = new();
-        private readonly EngineSetupService _setupService = new();
+        private readonly TranscriptionQueueManager _queueManager = new();
+        private readonly EngineManager _setupService = new();
 
-        public MainWindow()
+		public ObservableCollection<TranscriptionHistoryItem> ProcessedItems { get; set; }
+
+		public MainWindow()
         {
             InitializeComponent();
             // Bind the DataGrid to queue manager list
-            QueueGrid.ItemsSource = _manager.Jobs;
+            QueueGrid.ItemsSource = _queueManager.Jobs;
+			ProcessedItems = new ObservableCollection<TranscriptionHistoryItem>();
+			// HistoryGrid.ItemsSource = ProcessedItems;
 		}
 
 		private void UpdateStatusText(string message)
@@ -47,12 +53,12 @@ namespace SpeechMaster
         {
             if (File.Exists(_transcribeSerivce.AsrEngineLocation))
             {
-                textAsrLocation.Text = "ASR Engine Location found: " + _transcribeSerivce.AsrEngineLocation;
+                // textAsrLocation.Text = "ASR Engine Location found: " + _transcribeSerivce.AsrEngineLocation;
             }
             else
             {
-                textAsrLocation.Text = "ASR Engine Location not found.";
-                textAsrLocation.Foreground = System.Windows.Media.Brushes.Red;
+                // textAsrLocation.Text = "ASR Engine Location not found.";
+                // textAsrLocation.Foreground = System.Windows.Media.Brushes.Red;
             }
             if (System.Numerics.Vector.IsHardwareAccelerated)
             {
@@ -64,12 +70,69 @@ namespace SpeechMaster
             }
         }
 
-        private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
+		// --- LIST UPDATE LOGIC ---
+
+		private void AddToHistory(string filePath, string text)
+		{
+			var newItem = new TranscriptionHistoryItem
+			{
+				FileName = System.IO.Path.GetFileName(filePath),
+				FullPath = filePath,
+				TranscriptText = text,
+				ProcessedDate = DateTime.Now
+			};
+
+			Dispatcher.Invoke(() =>
+			{
+				ProcessedItems.Insert(0, newItem); // Додаємо на початок списку
+				// HistoryGrid.SelectedItem = newItem;
+			});
+		}
+
+		private void OnTranscriptionFinished(object sender, TranscriptionFinishedEventArgs e)
+		{
+			if (e.Result.Status == "success")
+			{
+                AddToHistory(_queueManager.Jobs[0].FilePath, e.Result.Text);
+			}
+		}
+
+		// --- Event Handlers ---
+
+		private void HistoryGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		{
+			//if (HistoryGrid.SelectedItem is TranscriptionHistoryItem selectedItem)
+			//{
+			//	boxTranscriptOutput.Text = selectedItem.TranscriptText;
+
+			//	txtSelectedFileStats.Text = $"File: {selectedItem.FileName} | Chars: {selectedItem.TranscriptText.Length}";
+			//}
+		}
+
+		// Change the method name to match XAML, and use SelectionChangedEventArgs
+		private void QueueGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		{
+			// Check if the selected item is valid and cast it to your TranscriptionJob model
+			if (QueueGrid.SelectedItem is SpeechMaster.Models.Transcription.TranscriptionJob selectedJob)
+			{
+				// If the result exists, show it. Otherwise, show the status.
+				if (!string.IsNullOrEmpty(selectedJob.Result))
+				{
+					boxTranscriptOutput.Text = selectedJob.Result;
+				}
+				else
+				{
+					boxTranscriptOutput.Text = $"Status: {selectedJob.Status ?? "Pending..."}";
+				}
+			}
+		}
+
+		private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
         {
             // Marshals to UI thread and start indeterminate progress
             Dispatcher.Invoke(() =>
             {
-                progressTranscript.IsIndeterminate = true;
+				progressTranscript.IsIndeterminate = true;
                 progressTranscript.Visibility = Visibility.Visible;
                 StatusText.Text = "Transcribing...";
             });
@@ -80,14 +143,16 @@ namespace SpeechMaster
             // Marshals to UI thread and stop progress
             Dispatcher.Invoke(() =>
             {
-                progressTranscript.IsIndeterminate = false;
+                btnStartTranscribe.Content = "▶";
+				progressTranscript.IsIndeterminate = false;
                 progressTranscript.Value = 0;
                 progressTranscript.Visibility = Visibility.Visible;
                 StatusText.Text = "Ready";
             });
         }
 
-        private void BtnSelectFile_Click(object sender, RoutedEventArgs e)
+		// TODO: Support Drag and Drop of files into the window
+		private void BtnSelectFile_Click(object sender, RoutedEventArgs e)
         {
             var ofd = new OpenFileDialog();
             ofd.Filter = "Audio files|*.wav;*.mp3;*.ogg;*.flac|All files|*.*";
@@ -99,7 +164,7 @@ namespace SpeechMaster
                     // Multiple files selected - add to queue
                     foreach (var file in ofd.FileNames)
                     {
-                        _manager.AddFile(file);
+                        _queueManager.AddFile(file);
                     }
                     txtAudioFilePath.Text = $"{ofd.FileNames.Length} files added to queue.";
                 }
@@ -108,7 +173,7 @@ namespace SpeechMaster
                     // Single file selected
                     var file = ofd.FileName;
                     txtAudioFilePath.Text = file;
-                    _manager.AddFile(file);
+                    _queueManager.AddFile(file);
                 }
             }
                 
@@ -116,7 +181,6 @@ namespace SpeechMaster
 
         private async void BtnStartTranscribe_Click(object sender, RoutedEventArgs e)
         {
-			// TODO: I need to check if all tools are available before starting
 			var file = txtAudioFilePath.Text;
 
             if (string.IsNullOrWhiteSpace(file))
@@ -127,12 +191,16 @@ namespace SpeechMaster
 
             boxTranscriptOutput.Text = "Please wait, analizing file...";
             StatusService.Instance.UpdateStatus("Working...");
+			btnStartTranscribe.Content = "⏹";
+			blockStartTranscription.Text = "Stop Transcription";
+			btnStartTranscribe.Background = System.Windows.Media.Brushes.OrangeRed;
 
-            try
+			try
             {
                 // Initiate transcription via TranscribeService
-                await _manager.StartProcessing();
-                var currentJob = _manager.Jobs.First();
+                await _queueManager.StartProcessing();
+				// FIXME: This is probably processing only the first item in the queue
+				var currentJob = _queueManager.Jobs[0];
 
                 if (currentJob == null)
                 {
@@ -144,12 +212,17 @@ namespace SpeechMaster
 
                 if (!string.IsNullOrWhiteSpace(currentJob.Result))
                 {
-                    boxTranscriptOutput.Text = currentJob.Result;
-                }
+					// TODO: It might be better to have text summarization functionality
+					// TODO: Implement key phrases extract functionality for NLP analysis
+					boxTranscriptOutput.Text = currentJob.Result;
+					btnStartTranscribe.Content = "▶";
+					blockStartTranscription.Text = "Start Transcription";
+                    btnStartTranscribe.Background = System.Windows.Media.Brushes.DarkBlue;
+				}
                 else
                 {
                     // If Transcriber sets Message on failure, show it; otherwise show fallback
-                    var msg = currentJob.Status ?? "Під час розпізнавання сталася помилка.";
+                    var msg = currentJob.Status ?? "An error occurred during transcription process.";
                     MessageBox.Show(msg, "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                     boxTranscriptOutput.Text = msg;
                 }
@@ -157,7 +230,7 @@ namespace SpeechMaster
             catch (FileNotFoundException fnfEx)
             {
                 // e.g. audio file not found
-                var msg = $"Файл не знайдено: {fnfEx.Message}";
+                var msg = $"File not found: {fnfEx.Message}";
                 MessageBox.Show(msg, "File not found", MessageBoxButton.OK, MessageBoxImage.Error);
                 boxTranscriptOutput.Text = msg;
             }
@@ -171,7 +244,7 @@ namespace SpeechMaster
             catch (Exception ex)
             {
                 // Generic fallback
-                var msg = $"Помилка під час розпізнавання: {ex.Message}";
+                var msg = $"An error occurred: {ex.Message}";
                 MessageBox.Show(msg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 boxTranscriptOutput.Text = msg;
             }
@@ -179,7 +252,7 @@ namespace SpeechMaster
 
         private void BtnCancelTranscribe_Click(object sender, RoutedEventArgs e)
         {
-            _manager.CancelProcessing();
+            _queueManager.CancelProcessing();
         }
 
         private void BtnCopyText_Click(object sender, RoutedEventArgs e)
@@ -248,7 +321,7 @@ namespace SpeechMaster
             _transcribeSerivce.TranscriptionFinished += TranscribeService_TranscriptionFinished;
             // Subscribe to status updates
             StatusService.Instance.OnStatusChanged += UpdateStatusText;
-            if (!_setupService.IsEngineInstalled() &&
+            if (!_setupService.IsWhisperEngineInstalled() &&
                 MessageBox.Show("Whisper ASR engine not found. Download and install it now?",
                     "Engine Missing", MessageBoxButton.YesNo, MessageBoxImage.Question) ==
                 MessageBoxResult.Yes)

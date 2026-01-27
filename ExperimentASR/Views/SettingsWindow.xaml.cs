@@ -1,4 +1,5 @@
 ﻿using SpeechMaster.Services;
+using System.Diagnostics;
 using System.Windows;
 
 namespace ExperimentASR.Views
@@ -6,6 +7,7 @@ namespace ExperimentASR.Views
     public partial class SettingsWindow : Window
     {
         private readonly SettingsManager _settings;
+        private readonly EngineManager _setupService = new();
 
         public SettingsWindow(SettingsManager settings)
         {
@@ -29,6 +31,17 @@ namespace ExperimentASR.Views
 				comboModelImplementation.SelectedIndex = 0;
 
 			txtAudioLanguage.Text = _settings.AudioLanguage;
+
+            if (_setupService.IsWhisperEngineInstalled())
+            {
+                LblWhisperVersion.Text = "Whisper DLL: Installed";
+                BtnOpenWhisperFolder.Visibility = Visibility.Visible;
+			}
+			else
+            {
+				LblWhisperVersion.Text = "Whisper DLL: Missing";
+				BtnOpenWhisperFolder.Visibility = Visibility.Hidden;
+			}
         }
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -81,7 +94,7 @@ namespace ExperimentASR.Views
 
         private void BtnOpenWhisperFolder_Click(object sender, RoutedEventArgs e)
         {
-			// Open the folder where whisper models are stored
+			Process.Start("explorer.exe", _setupService.GetWhisperFolderPath());
 		}
 
 		private void BtnOpenVoskFolder_Click(object sender, RoutedEventArgs e)
