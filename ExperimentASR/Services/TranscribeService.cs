@@ -8,9 +8,6 @@ using System.Text.Json;
 
 namespace SpeechMaster.Services
 {
-	// TODO: Support SRT export, multiple ASR engines, etc
-	// TODO: Support different model sizes (base, small, medium, large)
-	// FIXME: Use TranscriptStarted and TranscriptFinished events in UI
 	public class TranscribeService
 	{
 		private readonly Logger _logger = new Logger();
@@ -24,9 +21,8 @@ namespace SpeechMaster.Services
 		private readonly string _modelsBasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models");
 
 		// --- Settings ---
-		private readonly string _whisperModelSize;
 		private readonly string _audioLanguage;
-		private readonly string _asrEngine; // "openai_whisper" (python) or "whisper.cpp"
+		private readonly string _asrEngine;
 
 		// --- Diagnostics ---
 		private string _rawProcessOutput = "";
@@ -39,33 +35,38 @@ namespace SpeechMaster.Services
 		public TranscribeService()
 		{
 			SettingsManager settings = new SettingsManager();
-			_whisperModelSize = settings.WhisperModelSize; // for ex: "base", "small", "large"
-			_audioLanguage = settings.AudioLanguage;       // for ex: "uk", "en", "auto"
+			// _whisperModelSize більше не читаємо тут
+			_audioLanguage = settings.AudioLanguage;
 			_asrEngine = settings.AsrEngine;
 		}
 
 		public string AsrEngineLocation => _asrEngine == "whisper.cpp" ? _whisperCppExePath : _scriptPath;
 
 		/// <summary>
-		/// Main function. Decides to call direct transcription 
-		/// or segmentation based on file duration.
+		/// Main function. Тепер приймає modelType.
 		/// </summary>
-		public TranscriptionResult Transcribe(string audioPath)
+		/// 
+		public TranscriptionResult Transcribe(string audioPath, WhisperModelType modelType)
 		{
 			if (!File.Exists(audioPath))
 				throw new FileNotFoundException("Audio file not found.", audioPath);
 
 			TranscriptionStarted?.Invoke(this, EventArgs.Empty);
-			_logger.LogInfo($"Starting transcription: {audioPath} | Engine: {_asrEngine} | Model: {_whisperModelSize}");
+			_logger.LogInfo($"Starting transcription: {audioPath} | Engine: {_asrEngine} | Model: {modelType}");
 
-			// Тут можна додати перевірку тривалості для виклику TranscribeLongFile
-			return RunCommand(audioPath, _asrEngine);
+			// Передаємо модель далі
+			return RunCommand(audioPath, _asrEngine, modelType);
+		}
+
+		public virtual TranscriptionResult Transcribe(string audioPath)
+		{
+			throw new NotImplementedException("Use Transcribe with modelType parameter.");
 		}
 
 		/// <summary>
-		/// Segmentation logic (FFmpeg -> Chunks -> Transcribe -> Merge)
+		/// Segmentation logic. Тепер прокидує modelType у кожен шматок.
 		/// </summary>
-		public TranscriptionResult TranscribeLongFile(string sourceFile, double totalDurationSec)
+		public TranscriptionResult TranscribeLongFile(string sourceFile, double totalDurationSec, WhisperModelType modelType)
 		{
 			_logger.LogInfo($"Large file detected ({totalDurationSec}s). Starting segmentation...");
 
@@ -81,7 +82,7 @@ namespace SpeechMaster.Services
 
 			try
 			{
-				// 1. Split Audio (FFmpeg) -> 16kHz WAV
+				// 1. Split Audio (FFmpeg)
 				string chunkPattern = Path.Combine(tempFolder, "chunk_%03d.wav");
 				var startInfo = new ProcessStartInfo
 				{
@@ -102,10 +103,10 @@ namespace SpeechMaster.Services
 				for (int i = 0; i < chunks.Count; i++)
 				{
 					string chunkPath = chunks[i];
-					StatusService.Instance.UpdateStatus($"Processing part {i + 1} of {chunks.Count}...");
+					StatusService.Instance.UpdateStatus($"Processing part {i + 1} of {chunks.Count} using {modelType}...");
 
-					// Calling universal RunCommand method
-					var chunkResult = RunCommand(chunkPath, _asrEngine);
+					// ВАЖЛИВО: Передаємо обрану модель для обробки кожного шматка
+					var chunkResult = RunCommand(chunkPath, _asrEngine, modelType);
 
 					if (chunkResult.Status == "success")
 					{
@@ -142,43 +143,48 @@ namespace SpeechMaster.Services
 					Directory.Delete(tempFolder, true);
 			}
 
-			// Signal finish for the whole operation
 			TranscriptionFinished?.Invoke(this, new TranscriptionFinishedEventArgs(combinedResult));
 			return combinedResult;
 		}
 
 		// --- Core Execution Logic ---
 
-		private TranscriptionResult RunCommand(string filePath, string engine)
+		private TranscriptionResult RunCommand(string filePath, string engine, WhisperModelType modelType)
 		{
-			// Перевіряємо, чи engine містить "whisper" (може бути "whisper.cpp" або просто "whisper" залежно від конфігу)
 			if (engine.Contains("whisper") && !engine.Contains("openai"))
 			{
-				return RunWhisperCppProcess(filePath);
+				return RunWhisperCppProcess(filePath, modelType);
 			}
 			else
 			{
-				return RunPythonProcess(filePath);
+				return RunPythonProcess(filePath, modelType);
 			}
 		}
 
 		// --- Implementation: Whisper.cpp ---
 
-		private TranscriptionResult RunWhisperCppProcess(string filePath)
+		internal TranscriptionResult RunWhisperCppProcess(string filePath, WhisperModelType modelType)
 		{
-			// Construct path to folder (ggml-base.bin, ggml-large.bin тощо)
-			string modelPath = Path.Combine(_modelsBasePath, $"ggml-{_whisperModelSize}.bin");
+			// 1. Формуємо ім'я файлу на основі Enum
+			string modelFileName = modelType switch
+			{
+				WhisperModelType.Tiny => "ggml-tiny.bin",
+				WhisperModelType.Base => "ggml-base.bin",
+				WhisperModelType.Small => "ggml-small.bin",
+				WhisperModelType.Medium => "ggml-medium.bin",
+				_ => "ggml-base.bin"
+			};
+
+			string modelPath = Path.Combine(_modelsBasePath, modelFileName);
 
 			if (!File.Exists(_whisperCppExePath))
-				return ErrorResult($"Whisper executable not found at {_whisperCppExePath}. Please run Engine Setup.");
+				return ErrorResult($"Whisper executable not found at {_whisperCppExePath}.");
+
+			// Перевіряємо наявність саме тієї моделі, яку обрали
 			if (!File.Exists(modelPath))
-				return ErrorResult($"Model file not found at {modelPath}. Please run Engine Setup.");
+				return ErrorResult($"Model file not found at {modelPath}. Please download the {modelType} model first.");
 
-			// -m: model, -f: file, -oj: JSON output, -l: language
-			// whisper-cli.exe з прапором -oj створює файл: <filePath>.json
 			string expectedJsonOutput = filePath + ".json";
-
-			// Delete existing JSON output if any
 			if (File.Exists(expectedJsonOutput)) File.Delete(expectedJsonOutput);
 
 			string args = $"-m \"{modelPath}\" -f \"{filePath}\" -oj -l {_audioLanguage}";
@@ -187,7 +193,7 @@ namespace SpeechMaster.Services
 			{
 				FileName = _whisperCppExePath,
 				Arguments = args,
-				RedirectStandardOutput = true, // Whisper пише логи в stdout/stderr
+				RedirectStandardOutput = true,
 				RedirectStandardError = true,
 				UseShellExecute = false,
 				CreateNoWindow = true
@@ -198,7 +204,6 @@ namespace SpeechMaster.Services
 				try
 				{
 					process.Start();
-					// Reading logs without blocking buffer
 					string stdOut = process.StandardOutput.ReadToEnd();
 					string stdErr = process.StandardError.ReadToEnd();
 					_rawProcessOutput = $"STDOUT: {stdOut}\nSTDERR: {stdErr}";
@@ -213,7 +218,7 @@ namespace SpeechMaster.Services
 					if (File.Exists(expectedJsonOutput))
 					{
 						string jsonContent = File.ReadAllText(expectedJsonOutput);
-						File.Delete(expectedJsonOutput); // Cleanup
+						File.Delete(expectedJsonOutput);
 						return ParseWhisperCppJson(jsonContent);
 					}
 					else
@@ -232,8 +237,6 @@ namespace SpeechMaster.Services
 		{
 			try
 			{
-				// Whisper.cpp JSON output format:
-				// { "transcription": [ { "from": "...", "to": "...", "text": "..." } ] }
 				using (JsonDocument doc = JsonDocument.Parse(jsonContent))
 				{
 					var result = new TranscriptionResult("", new List<Segment>()) { Status = "success", Text = "" };
@@ -244,13 +247,9 @@ namespace SpeechMaster.Services
 						foreach (var item in transcriptionArray.EnumerateArray())
 						{
 							string text = item.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
-
-							// Getting time stamps
 							double start = ExtractTime(item, "from");
 							double end = ExtractTime(item, "to");
-
 							text = text.Trim();
-
 							result.Text += text + " ";
 							result.Segments.Add(new Segment { Start = start, End = end, Text = text });
 						}
@@ -267,21 +266,14 @@ namespace SpeechMaster.Services
 
 		public double ExtractTime(JsonElement element, string propertyName)
 		{
+			// ... (Без змін) ...
 			if (element.TryGetProperty(propertyName, out JsonElement val))
 			{
 				if (val.ValueKind == JsonValueKind.Number) return val.GetDouble();
 				if (val.ValueKind == JsonValueKind.String)
 				{
-					// Whisper CLI output format handling
-					if (TimeSpan.TryParse(val.GetString(), out TimeSpan ts))
-					{
-						return ts.TotalSeconds;
-					}
-					// Fallback for string numbers like "1.5"
-					if (double.TryParse(val.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double sec))
-					{
-						return sec;
-					}
+					if (TimeSpan.TryParse(val.GetString(), out TimeSpan ts)) return ts.TotalSeconds;
+					if (double.TryParse(val.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double sec)) return sec;
 				}
 			}
 			return 0.0;
@@ -289,9 +281,12 @@ namespace SpeechMaster.Services
 
 		// --- Implementation: Python (Legacy) ---
 
-		private TranscriptionResult RunPythonProcess(string filePath)
+		private TranscriptionResult RunPythonProcess(string filePath, WhisperModelType modelType)
 		{
-			string args = $"\"{_scriptPath}\" \"{filePath}\" \"{_whisperModelSize}\"";
+			// Перетворюємо Enum в рядок ("base", "small") для Python скрипта
+			string modelSizeStr = modelType.ToString().ToLower();
+
+			string args = $"\"{_scriptPath}\" \"{filePath}\" \"{modelSizeStr}\"";
 
 			var startInfo = new ProcessStartInfo
 			{
@@ -324,10 +319,9 @@ namespace SpeechMaster.Services
 
 		private TranscriptionResult ParsePythonOutput(string output, string error)
 		{
+			// ... (Без змін) ...
 			if (string.IsNullOrWhiteSpace(output))
-			{
 				return ErrorResult(!string.IsNullOrWhiteSpace(error) ? $"Python error: {error}" : "No output received.");
-			}
 
 			try
 			{
@@ -338,15 +332,11 @@ namespace SpeechMaster.Services
 					AllowTrailingCommas = true
 				};
 				var result = JsonSerializer.Deserialize<TranscriptionResult>(output, options);
-
 				if (result == null) throw new JsonException("Result was null.");
-
-				// Normalization
 				if (string.Equals(result.Status, "ok", StringComparison.OrdinalIgnoreCase)) result.Status = "success";
 				result.Message ??= "";
 				result.Text ??= "";
 				if (result.Segments == null) result.Segments = new List<Segment>();
-
 				return result;
 			}
 			catch (JsonException ex)
@@ -355,10 +345,9 @@ namespace SpeechMaster.Services
 			}
 		}
 
-		// --- Helpers ---
-
 		private TranscriptionResult ErrorResult(string message)
 		{
+			// ... (Без змін) ...
 			_logger.LogError(message);
 			return new TranscriptionResult("", new List<Segment>())
 			{

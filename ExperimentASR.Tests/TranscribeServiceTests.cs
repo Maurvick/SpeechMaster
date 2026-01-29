@@ -29,7 +29,7 @@ namespace SpeechMaster.Tests
 			string fakePath = "C:\\NonExistentFile.wav";
 
 			// Act
-			Action act = () => _service.Transcribe(fakePath);
+			Action act = () => _service.Transcribe(fakePath, WhisperModelType.Base);
 
 			// Assert
 			act.Should().Throw<FileNotFoundException>()

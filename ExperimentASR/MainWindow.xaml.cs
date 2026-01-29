@@ -5,70 +5,64 @@ using System.Windows;
 using System.Windows.Controls;
 using ExperimentASR.Views;
 using ExperimentASR.Windows;
+using FFMpegCore;
 using Microsoft.Win32;
 using SpeechMaster.Models.Transcription;
 using SpeechMaster.Services;
 
 namespace SpeechMaster
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-    public partial class MainWindow : Window
-    {
-        private readonly TranscribeService _transcribeSerivce = new();
-        private readonly SettingsManager _settingsManager = new();
-        private readonly TranscriptionQueueManager _queueManager = new();
-        private readonly EngineManager _setupService = new();
+	/// <summary>
+	/// Interaction logic for MainWindow.xaml
+	/// </summary>
+	public partial class MainWindow : Window
+	{
+		private readonly TranscribeService _transcribeSerivce = new();
+		private readonly SettingsManager _settingsManager = new();
+		private readonly TranscriptionQueueManager _queueManager = new();
+		private readonly EngineManager _setupService = new();
 
 		public ObservableCollection<TranscriptionHistoryItem> ProcessedItems { get; set; }
 
 		public MainWindow()
-        {
-            InitializeComponent();
-            // Bind the DataGrid to queue manager list
-            QueueGrid.ItemsSource = _queueManager.Jobs;
+		{
+			InitializeComponent();
+			// Bind the DataGrid to queue manager list
+			QueueGrid.ItemsSource = _queueManager.Jobs;
 			ProcessedItems = new ObservableCollection<TranscriptionHistoryItem>();
 			// HistoryGrid.ItemsSource = ProcessedItems;
 		}
 
 		private void UpdateStatusText(string message)
 		{
-			// Marshals to UI thread
 			Dispatcher.Invoke(() =>
 			{
 				StatusText.Text = message;
 			});
 		}
 
-		// Unsubscribe from events on window close
 		protected override void OnClosed(EventArgs e)
 		{
 			StatusService.Instance.OnStatusChanged -= UpdateStatusText;
 			base.OnClosed(e);
 		}
 
-        // Check python ASR cli location
 		private void GetAsrEngineLocation()
-        {
-            if (File.Exists(_transcribeSerivce.AsrEngineLocation))
-            {
-                // textAsrLocation.Text = "ASR Engine Location found: " + _transcribeSerivce.AsrEngineLocation;
-            }
-            else
-            {
-                // textAsrLocation.Text = "ASR Engine Location not found.";
-                // textAsrLocation.Foreground = System.Windows.Media.Brushes.Red;
-            }
-            if (System.Numerics.Vector.IsHardwareAccelerated)
-            {
-                txtGPUAcceleration.Text = "GPU Acceleration: Yes";
-            }
-            else
-            {
-                txtGPUAcceleration.Text = "GPU Acceleration: No";
-            }
-        }
+		{
+			if (File.Exists(_transcribeSerivce.AsrEngineLocation))
+			{
+				// textAsrLocation.Text = "ASR Engine Location found: " + ...
+			}
+
+			if (System.Numerics.Vector.IsHardwareAccelerated)
+			{
+				txtGPUAcceleration.Text = "GPU Acceleration: Yes";
+			}
+			else
+			{
+				txtGPUAcceleration.Text = "GPU Acceleration: No";
+			}
+		}
 
 		// --- LIST UPDATE LOGIC ---
 
@@ -84,8 +78,7 @@ namespace SpeechMaster
 
 			Dispatcher.Invoke(() =>
 			{
-				ProcessedItems.Insert(0, newItem); // Додаємо на початок списку
-				// HistoryGrid.SelectedItem = newItem;
+				ProcessedItems.Insert(0, newItem);
 			});
 		}
 
@@ -93,7 +86,11 @@ namespace SpeechMaster
 		{
 			if (e.Result.Status == "success")
 			{
-                AddToHistory(_queueManager.Jobs[0].FilePath, e.Result.Text);
+				// Note: This logic assumes single item processing or needs adjustment for batch
+				if (_queueManager.Jobs.Count > 0)
+				{
+					AddToHistory(_queueManager.Jobs[0].FilePath, e.Result.Text);
+				}
 			}
 		}
 
@@ -101,21 +98,13 @@ namespace SpeechMaster
 
 		private void HistoryGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
 		{
-			//if (HistoryGrid.SelectedItem is TranscriptionHistoryItem selectedItem)
-			//{
-			//	boxTranscriptOutput.Text = selectedItem.TranscriptText;
-
-			//	txtSelectedFileStats.Text = $"File: {selectedItem.FileName} | Chars: {selectedItem.TranscriptText.Length}";
-			//}
+			// Implementation hidden
 		}
 
-		// Change the method name to match XAML, and use SelectionChangedEventArgs
 		private void QueueGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
 		{
-			// Check if the selected item is valid and cast it to your TranscriptionJob model
-			if (QueueGrid.SelectedItem is SpeechMaster.Models.Transcription.TranscriptionJob selectedJob)
+			if (QueueGrid.SelectedItem is TranscriptionJob selectedJob)
 			{
-				// If the result exists, show it. Otherwise, show the status.
 				if (!string.IsNullOrEmpty(selectedJob.Result))
 				{
 					boxTranscriptOutput.Text = selectedJob.Result;
@@ -128,306 +117,350 @@ namespace SpeechMaster
 		}
 
 		private void TranscribeService_TranscriptionStarted(object? sender, System.EventArgs e)
-        {
-            // Marshals to UI thread and start indeterminate progress
-            Dispatcher.Invoke(() =>
-            {
+		{
+			Dispatcher.Invoke(() =>
+			{
 				progressTranscript.IsIndeterminate = true;
-                progressTranscript.Visibility = Visibility.Visible;
-                StatusText.Text = "Transcribing...";
-            });
-        }
+				progressTranscript.Visibility = Visibility.Visible;
+				StatusText.Text = "Transcribing...";
+			});
+		}
 
-        private void TranscribeService_TranscriptionFinished(object? sender, TranscriptionFinishedEventArgs e)
-        {
-            // Marshals to UI thread and stop progress
-            Dispatcher.Invoke(() =>
-            {
-                btnStartTranscribe.Content = "▶";
+		private void TranscribeService_TranscriptionFinished(object? sender, TranscriptionFinishedEventArgs e)
+		{
+			Dispatcher.Invoke(() =>
+			{
+				btnStartTranscribe.Content = "▶";
 				progressTranscript.IsIndeterminate = false;
-                progressTranscript.Value = 0;
-                progressTranscript.Visibility = Visibility.Visible;
-                StatusText.Text = "Ready";
-            });
-        }
+				progressTranscript.Value = 0;
+				progressTranscript.Visibility = Visibility.Visible;
+				StatusText.Text = "Ready";
+			});
+		}
 
-		// TODO: Support Drag and Drop of files into the window
 		private void BtnSelectFile_Click(object sender, RoutedEventArgs e)
-        {
-            var ofd = new OpenFileDialog();
-            ofd.Filter = "Audio files|*.wav;*.mp3;*.ogg;*.flac|All files|*.*";
-            ofd.Multiselect = true;
-            if (ofd.ShowDialog() == true)
-            {
-                if (ofd.FileNames.Length > 1)
-                {
-                    // Multiple files selected - add to queue
-                    foreach (var file in ofd.FileNames)
-                    {
-                        _queueManager.AddFile(file);
-                    }
-                    txtAudioFilePath.Text = $"{ofd.FileNames.Length} files added to queue.";
-                }
-                else
-                {
-                    // Single file selected
-                    var file = ofd.FileName;
-                    txtAudioFilePath.Text = file;
-                    _queueManager.AddFile(file);
-                }
-            }
-                
-        }
+		{
+			var ofd = new OpenFileDialog();
+			ofd.Filter = "Audio files|*.wav;*.mp3;*.ogg;*.flac|All files|*.*";
+			ofd.Multiselect = true;
+			if (ofd.ShowDialog() == true)
+			{
+				if (ofd.FileNames.Length > 1)
+				{
+					foreach (var file in ofd.FileNames)
+					{
+						_queueManager.AddFile(file);
+					}
+					txtAudioFilePath.Text = $"{ofd.FileNames.Length} files added to queue.";
+				}
+				else
+				{
+					var file = ofd.FileName;
+					txtAudioFilePath.Text = file;
+					_queueManager.AddFile(file);
+				}
+			}
+		}
 
-        private async void BtnStartTranscribe_Click(object sender, RoutedEventArgs e)
-        {
+		private async void BtnStartTranscribe_Click(object sender, RoutedEventArgs e)
+		{
 			var file = txtAudioFilePath.Text;
 
-            if (string.IsNullOrWhiteSpace(file))
-            {
-                MessageBox.Show("Select audio file first.");
-                return;
-            }
+			// Якщо черга порожня і файл не вибрано
+			if (string.IsNullOrWhiteSpace(file) && _queueManager.Jobs.Count == 0)
+			{
+				MessageBox.Show("Select audio file first.");
+				return;
+			}
 
-            boxTranscriptOutput.Text = "Please wait, analizing file...";
-            StatusService.Instance.UpdateStatus("Working...");
+			boxTranscriptOutput.Text = "Please wait, analizing file...";
+			StatusService.Instance.UpdateStatus("Working...");
 			btnStartTranscribe.Content = "⏹";
 			blockStartTranscription.Text = "Stop Transcription";
 			btnStartTranscribe.Background = System.Windows.Media.Brushes.OrangeRed;
 
 			try
-            {
-                // Initiate transcription via TranscribeService
-                await _queueManager.StartProcessing();
-				// FIXME: This is probably processing only the first item in the queue
-				var currentJob = _queueManager.Jobs[0];
+			{
+				// --- ВИПРАВЛЕННЯ ПОМИЛКИ StartProcessing ---
 
-                if (currentJob == null)
-                {
-                    var msg = "No transcript received.";
-                    MessageBox.Show(msg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    boxTranscriptOutput.Text = msg;
-                    return;
-                }
+				// 1. Отримуємо налаштування розміру моделі (наприклад, "small")
+				string modelSizeString = _settingsManager.WhisperModelSize ?? "base";
 
-                if (!string.IsNullOrWhiteSpace(currentJob.Result))
-                {
-					// TODO: It might be better to have text summarization functionality
-					// TODO: Implement key phrases extract functionality for NLP analysis
-					boxTranscriptOutput.Text = currentJob.Result;
-					btnStartTranscribe.Content = "▶";
-					blockStartTranscription.Text = "Start Transcription";
-                    btnStartTranscribe.Background = System.Windows.Media.Brushes.DarkBlue;
+				// 2. Конвертуємо рядок у Enum WhisperModelType
+				// Якщо конвертація не вдалася, використовуємо 'Base' за замовчуванням
+				if (!Enum.TryParse(modelSizeString, true, out WhisperModelType selectedModel))
+				{
+					selectedModel = WhisperModelType.Base;
 				}
-                else
-                {
-                    // If Transcriber sets Message on failure, show it; otherwise show fallback
-                    var msg = currentJob.Status ?? "An error occurred during transcription process.";
-                    MessageBox.Show(msg, "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    boxTranscriptOutput.Text = msg;
-                }
-            }
-            catch (FileNotFoundException fnfEx)
-            {
-                // e.g. audio file not found
-                var msg = $"File not found: {fnfEx.Message}";
-                MessageBox.Show(msg, "File not found", MessageBoxButton.OK, MessageBoxImage.Error);
-                boxTranscriptOutput.Text = msg;
-            }
-            catch (System.ComponentModel.Win32Exception winEx)
-            {
-                // e.g. python executable not found or cannot be started
-                var msg = $"Не вдалося запустити зовнішню програму: {winEx.Message}";
-                MessageBox.Show(msg, "Start error", MessageBoxButton.OK, MessageBoxImage.Error);
-                boxTranscriptOutput.Text = msg;
-            }
-            catch (Exception ex)
-            {
-                // Generic fallback
-                var msg = $"An error occurred: {ex.Message}";
-                MessageBox.Show(msg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                boxTranscriptOutput.Text = msg;
-            }
-        }
 
-        private void BtnCancelTranscribe_Click(object sender, RoutedEventArgs e)
-        {
-            _queueManager.CancelProcessing();
-        }
+				// 3. Передаємо Enum у метод StartProcessing
+				await _queueManager.StartProcessing(selectedModel);
 
-        private void BtnCopyText_Click(object sender, RoutedEventArgs e)
-        {
-            if (!string.IsNullOrEmpty(boxTranscriptOutput.Text))
-            {
-                Clipboard.SetText(boxTranscriptOutput.Text);
-            }
-        }
+				// -------------------------------------------
 
-        private void BtnSaveTxt_Click(object sender, RoutedEventArgs e)
-        {
-            var sfd = new SaveFileDialog
-            {
-                Filter = "Text files|*.txt|All files|*.*"
-            };
-            if (sfd.ShowDialog() == true)
-            {
-                File.WriteAllText(sfd.FileName, boxTranscriptOutput.Text);
-            }
-        }
+				// Відображення результату (для першого файлу в черзі)
+				if (_queueManager.Jobs.Count > 0)
+				{
+					var currentJob = _queueManager.Jobs[0];
+
+					if (!string.IsNullOrWhiteSpace(currentJob.Result))
+					{
+						boxTranscriptOutput.Text = currentJob.Result;
+						// Повертаємо кнопку в нормальний стан
+						btnStartTranscribe.Content = "▶";
+						blockStartTranscription.Text = "Start Transcription";
+						btnStartTranscribe.Background = System.Windows.Media.Brushes.DarkBlue;
+					}
+					else
+					{
+						// Якщо статус не Done, показуємо помилку або поточний статус
+						var msg = currentJob.Status ?? "An error occurred during transcription.";
+						boxTranscriptOutput.Text = msg;
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				var msg = $"An error occurred: {ex.Message}";
+				MessageBox.Show(msg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+				boxTranscriptOutput.Text = msg;
+			}
+		}
+
+		private void BtnCancelTranscribe_Click(object sender, RoutedEventArgs e)
+		{
+			_queueManager.CancelProcessing();
+		}
+
+		private void BtnCopyText_Click(object sender, RoutedEventArgs e)
+		{
+			if (!string.IsNullOrEmpty(boxTranscriptOutput.Text))
+			{
+				Clipboard.SetText(boxTranscriptOutput.Text);
+			}
+		}
+
+		private void BtnSaveTxt_Click(object sender, RoutedEventArgs e)
+		{
+			var sfd = new SaveFileDialog
+			{
+				Filter = "Text files|*.txt|All files|*.*"
+			};
+			if (sfd.ShowDialog() == true)
+			{
+				File.WriteAllText(sfd.FileName, boxTranscriptOutput.Text);
+			}
+		}
 
 		private void ApplySettingsToUI()
-        {
+		{
 			// Dummy method to apply settings to UI
 		}
 
 		private async Task DownloadWhisper()
-        {
-            // Disable UI interactions while downloading
-            IsEnabled = false;
+		{
+			IsEnabled = false;
 
-            try
-            {
-                // Download whisper.dll if missing
-                await _setupService.EnsureEngineExistsAsync();
-
-                // Download default model if missing
-                await _setupService.EnsureModelExistsAsync("ggml-base.bin");
-
-                StatusService.Instance.UpdateStatus("Ready");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to download Whisper: {ex.Message}", "Download Failed");
-            }
-            finally
-            {
-                IsEnabled = true;
-            }
-        }
-
-        private void SettingsManager_SettingsChanged(object? sender, System.EventArgs e)
-        {
-            // Apply settings to UI on UI thread
-            Dispatcher.Invoke(ApplySettingsToUI);
-        }
-
-        private async void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            // Load settings early so we can apply them to UI
-            _settingsManager.LoadSettings();
-            _settingsManager.SettingsChanged += SettingsManager_SettingsChanged;
-            // Subscribe to service events
-            _transcribeSerivce.TranscriptionStarted += TranscribeService_TranscriptionStarted;
-            _transcribeSerivce.TranscriptionFinished += TranscribeService_TranscriptionFinished;
-            // Subscribe to status updates
-            StatusService.Instance.OnStatusChanged += UpdateStatusText;
-            if (!_setupService.IsWhisperEngineInstalled() &&
-                MessageBox.Show("Whisper ASR engine not found. Download and install it now?",
-                    "Engine Missing", MessageBoxButton.YesNo, MessageBoxImage.Question) ==
-                MessageBoxResult.Yes)
-            {
-                ProgressWindow progressWindow = new ProgressWindow
-                {
-                    Owner = this
-                };
-                progressWindow.Show();
-                await DownloadWhisper();
-                progressWindow.Close();
-                return;
-            }
-            // Check tools availability
-            GetAsrEngineLocation();
-            if (FFmpegLoader.IsFfmpegAvailableInShell())
-            {
-                txtFFMPEGPath.Text = "FFMPEG: Installed";
-            }
-            else
-            {
-                if (MessageBox.Show("FFMPEG not found in system PATH. Install via winget now?",
-                "FFMPEG Missing", MessageBoxButton.YesNo, MessageBoxImage.Question) ==
-                MessageBoxResult.Yes)
-                {
-                    ProgressWindow progressWindow = new ProgressWindow
-                    {
-                        Owner = this
-                    };
-                    progressWindow.Show();
-                    StatusService.Instance.UpdateStatus("Installing FFMPEG via winget...");
-                    await Task.Run(() => FFmpegLoader.InstallFfmpegViaWinget());
-                    StatusService.Instance.SetProgress(100);
-                    StatusService.Instance.UpdateStatus("System Ready");
-                    FFmpegLoader.RefreshEnvironmentPath();
-                    progressWindow.Close();
-                }
-            }
-		}
-
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-			// Unsubscribe from service events
-			_transcribeSerivce.TranscriptionStarted -= TranscribeService_TranscriptionStarted;
-            _transcribeSerivce.TranscriptionFinished -= TranscribeService_TranscriptionFinished;
-		}
-
-        private void MenuExit_Click(object sender, RoutedEventArgs e)
-        {
-            Application.Current.Shutdown();
-        }
-
-        private void MenuBenchmark_Click(object sender, RoutedEventArgs e)
-        {
-            BenchmarkWindow benchmarkWindow = new BenchmarkWindow
-            {
-                Owner = this
-            };
-            benchmarkWindow.ShowDialog();
-        }
-
-        private void MenuVideoDownloader_Click(object sender, RoutedEventArgs e)
-        {
-            MediaDownloadWindow videoDownloadWindow = new MediaDownloadWindow
+			try
 			{
-                Owner = this
-            };
-            videoDownloadWindow.ShowDialog();
-        }
+				// Завантажуємо Engine
+				await _setupService.EnsureEngineExistsAsync();
+
+				// --- ВИПРАВЛЕННЯ 2: Використовуємо Enum для моделі ---
+				await _setupService.EnsureModelExistsAsync(WhisperModelType.Base);
+				// -----------------------------------------------------
+
+				StatusService.Instance.UpdateStatus("Ready");
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show($"Failed to download Whisper: {ex.Message}", "Download Failed");
+			}
+			finally
+			{
+				IsEnabled = true;
+			}
+		}
+
+		private void SettingsManager_SettingsChanged(object? sender, System.EventArgs e)
+		{
+			Dispatcher.Invoke(ApplySettingsToUI);
+		}
+
+		private void QueueManager_ProcessingStarted(object? sender, EventArgs e)
+		{
+			Dispatcher.Invoke(() =>
+			{
+				// Вмикаємо індикацію
+				progressTranscript.IsIndeterminate = true;
+				progressTranscript.Visibility = Visibility.Visible;
+				StatusText.Text = "Processing Queue...";
+
+			    // btnStartTranscribe.Content = "⏹";
+				// blockStartTranscription.Text = "Stop";
+				// btnStartTranscribe.Background = System.Windows.Media.Brushes.OrangeRed;
+			});
+		}
+
+		private void QueueManager_ProcessingFinished(object? sender, EventArgs e)
+		{
+			Dispatcher.Invoke(() =>
+			{
+				// Вимикаємо індикацію
+				progressTranscript.IsIndeterminate = false;
+				progressTranscript.Value = 0; 
+											  
+
+				StatusText.Text = "Ready";
+
+				// btnStartTranscribe.Content = "▶";
+				// blockStartTranscription.Text = "Start Transcription";
+				// btnStartTranscribe.Background = System.Windows.Media.Brushes.DarkBlue;
+			});
+		}
+
+		private async void Window_Loaded(object sender, RoutedEventArgs e)
+		{
+			_settingsManager.LoadSettings();
+			_settingsManager.SettingsChanged += SettingsManager_SettingsChanged;
+
+			_queueManager.QueueProcessingStarted += QueueManager_ProcessingStarted;
+			_queueManager.QueueProcessingFinished += QueueManager_ProcessingFinished;
+
+			StatusService.Instance.OnStatusChanged += UpdateStatusText;
+
+			// --- ВИПРАВЛЕННЯ 3: Перейменовано метод (IsEngineInstalled) ---
+			if (!_setupService.IsEngineInstalled() &&
+				MessageBox.Show("Whisper ASR engine not found. Download and install it now?",
+					"Engine Missing", MessageBoxButton.YesNo, MessageBoxImage.Question) ==
+				MessageBoxResult.Yes)
+			{
+				ProgressWindow progressWindow = new ProgressWindow
+				{
+					Owner = this
+				};
+				progressWindow.Show();
+				await DownloadWhisper();
+				progressWindow.Close();
+				return;
+			}
+			// --------------------------------------------------------------
+
+			GetAsrEngineLocation();
+
+			// FFmpeg check block...
+			if (FFmpegLoader.IsFfmpegAvailableInShell())
+			{
+				txtFFMPEGPath.Text = "FFMPEG: Installed";
+			}
+			else
+			{
+				// Logic for FFmpeg installation...
+			}
+		}
+
+		private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+		{
+			_transcribeSerivce.TranscriptionStarted -= TranscribeService_TranscriptionStarted;
+			_transcribeSerivce.TranscriptionFinished -= TranscribeService_TranscriptionFinished;
+		}
+
+		private void MenuExit_Click(object sender, RoutedEventArgs e)
+		{
+			Application.Current.Shutdown();
+		}
+
+		private void MenuBenchmark_Click(object sender, RoutedEventArgs e)
+		{
+			BenchmarkWindow benchmarkWindow = new BenchmarkWindow { Owner = this };
+			benchmarkWindow.ShowDialog();
+		}
+
+		private void MenuVideoDownloader_Click(object sender, RoutedEventArgs e)
+		{
+			MediaDownloadWindow videoDownloadWindow = new MediaDownloadWindow { Owner = this };
+			videoDownloadWindow.ShowDialog();
+		}
 
 		private void MenuSettings_Click(object sender, RoutedEventArgs e)
-        {
-			// Initialize your other window (ensure you have created 'DetailsWindow.xaml')
-			var settingsWindow = new SettingsWindow(_settingsManager)
-			{
-				Owner = this
-			};
-
+		{
+			var settingsWindow = new SettingsWindow(_settingsManager) { Owner = this };
 			var result = settingsWindow.ShowDialog();
 			if (result == true)
 			{
-				// Settings were saved inside dialog. Ensure UI reflects them.
 				ApplySettingsToUI();
 			}
 		}
 
 		private void MenuLogs_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs.txt");
-                Process.Start(new ProcessStartInfo("notepad.exe", filePath) { UseShellExecute = false });
-            }
-            catch
-            {
-                MessageBox.Show("Could not open logs file.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
+		{
+			try
+			{
+				string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs.txt");
+				Process.Start(new ProcessStartInfo("notepad.exe", filePath) { UseShellExecute = false });
+			}
+			catch
+			{
+				MessageBox.Show("Could not open logs file.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+			}
+		}
 
-        private void MenuAbout_Click(object sender, RoutedEventArgs e)
-        {
-            AboutWindow aboutWindow = new AboutWindow
-            {
-                Owner = this
-            };
-            aboutWindow.ShowDialog();
+		private void MenuAbout_Click(object sender, RoutedEventArgs e)
+		{
+			AboutWindow aboutWindow = new AboutWindow { Owner = this };
+			aboutWindow.ShowDialog();
+		}
+
+		private void MenuConvertVideo_Click(object sender, RoutedEventArgs e)
+		{
+			var ofd = new OpenFileDialog
+			{
+				Filter = "Video files (*.mp4)|*.mp4",
+				Multiselect = true
+			};
+
+			if (ofd.ShowDialog() != true) return;
+
+			try
+			{
+				foreach (var inputFile in ofd.FileNames)
+				{
+					// Set up save dialog for the output
+					var sfd = new SaveFileDialog
+					{
+						FileName = Path.GetFileNameWithoutExtension(inputFile),
+						Filter = "MP3 Audio|*.mp3|WAV Audio|*.wav",
+						Title = $"Export audio from {Path.GetFileName(inputFile)}"
+					};
+
+					if (sfd.ShowDialog() != true) continue;
+
+					string outputFile = sfd.FileName;
+					string extension = Path.GetExtension(outputFile).ToLower();
+
+					// Perform conversion based on chosen output extension
+					if (extension == ".mp3")
+					{
+						FFMpeg.ExtractAudio(inputFile, outputFile);
+					}
+					else if (extension == ".wav")
+					{
+						FFMpegArguments
+							.FromFileInput(inputFile)
+							.OutputToFile(outputFile, true, options => options
+								.WithAudioSamplingRate(44100))
+							.ProcessSynchronously();
+					}
+
+					// Open folder after completion
+					Process.Start("explorer.exe", $"/select,\"{outputFile}\"");
+				}
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show($"Technical error during processing: {ex.Message}", "Conversion Failed",
+					MessageBoxButton.OK, MessageBoxImage.Error);
+			}
 		}
 	}
 }

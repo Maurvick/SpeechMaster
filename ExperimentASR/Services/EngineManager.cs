@@ -1,50 +1,69 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using SpeechMaster.Models;
+using SpeechMaster.Models; // Переконайтесь, що тут є ваші моделі статусів
 using SpeechMaster.Services.Engines;
 
 namespace SpeechMaster.Services
 {
+	// 1. Додаємо перелік доступних моделей
+	public enum WhisperModelType
+	{
+		Tiny,
+		Base,
+		Small,
+		Medium
+	}
+
 	public class EngineManager
 	{
 		private const string RepoApiUrl = "https://api.github.com/repos/ggerganov/whisper.cpp/releases/latest";
+		// Використовуємо huggingface для прямих посилань на .bin файли
 		private const string ModelBaseUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/";
-		private const string DefaultModelName = "ggml-base.bin";
 
 		private readonly string _baseDir;
 		private readonly HttpClient _httpClient;
 		private readonly string _toolsDir;
 		private readonly string _whisperExePath;
+		private readonly string _modelsDir;
+
+		// 2. Словник для мапінгу Enum -> Назва файлу
+		private readonly Dictionary<WhisperModelType, string> _modelFileNames = new()
+		{
+			{ WhisperModelType.Tiny, "ggml-tiny.bin" },
+			{ WhisperModelType.Base, "ggml-base.bin" },
+			{ WhisperModelType.Small, "ggml-small.bin" },
+			{ WhisperModelType.Medium, "ggml-medium.bin" }
+		};
 
 		private List<AsrEngine> _engines = new();
 
-		public EngineManager() : this(null, null)
-		{
-		}
+		public EngineManager() : this(null, null) { }
 
 		public EngineManager(string baseDir, HttpClient httpClient)
 		{
 			_engines.AddRange([new WhisperEngine()]);
 
-			// If baseDir is null, use the real AppDomain path. If provided (tests), use it.
 			_baseDir = baseDir ?? AppDomain.CurrentDomain.BaseDirectory;
-
-			// If httpClient is null, create a real one. If provided (tests), use the mock.
 			_httpClient = httpClient ?? new HttpClient();
 
-			// Only add the header if we created the client (Mocks usually come pre-configured)
 			if (httpClient == null)
 			{
 				_httpClient.DefaultRequestHeaders.Add("User-Agent", "SpeechMaster-App");
 			}
 
 			_toolsDir = Path.Combine(_baseDir, "Tools", "whisper");
+			_modelsDir = Path.Combine(_baseDir, "Models"); // Виніс окремо шлях до моделей
 			_whisperExePath = Path.Combine(_toolsDir, "whisper-cli.exe");
+		}
+
+		public string GetWhisperFolderPath()
+		{
+			return _toolsDir;
 		}
 
 		/// <summary>
@@ -52,32 +71,42 @@ namespace SpeechMaster.Services
 		/// </summary>
 		public bool IsWhisperEngineInstalled()
 		{
-			string modelPath = Path.Combine(_baseDir, "Models", DefaultModelName);
-			return File.Exists(_whisperExePath) && File.Exists(modelPath);
+			return IsEngineInstalled();
 		}
 
 		/// <summary>
-		/// Returns the folder path where Whisper engine files are stored.
+		/// Повертає повний шлях до файлу обраної моделі.
 		/// </summary>
-		public string GetWhisperFolderPath()
+		public string GetModelPath(WhisperModelType type)
 		{
-			return _toolsDir;
+			return Path.Combine(_modelsDir, _modelFileNames[type]);
+		}
+
+		/// <summary>
+		/// Перевіряє, чи встановлено двигун (exe).
+		/// </summary>
+		public bool IsEngineInstalled()
+		{
+			return File.Exists(_whisperExePath);
+		}
+
+		/// <summary>
+		/// Перевіряє, чи завантажено конкретну модель.
+		/// </summary>
+		public bool IsModelInstalled(WhisperModelType type)
+		{
+			return File.Exists(GetModelPath(type));
 		}
 
 		public async Task EnsureEngineExistsAsync()
 		{
 			if (!Directory.Exists(_toolsDir)) Directory.CreateDirectory(_toolsDir);
 
-			// Перевіряємо наявність .exe.
 			if (File.Exists(_whisperExePath))
 			{
-				// Швидка перевірка: чи є поруч хоча б якісь .dll? 
+				// Перевірка цілісності DLL
 				var dllFiles = Directory.GetFiles(_toolsDir, "*.dll");
-				if (dllFiles.Length > 0)
-				{
-					StatusService.Instance.UpdateStatus("Engine integrity check: OK");
-					return;
-				}
+				if (dllFiles.Length > 0) return;
 			}
 
 			string zipPath = Path.Combine(_baseDir, "engine_temp.zip");
@@ -89,18 +118,15 @@ namespace SpeechMaster.Services
 
 				string downloadUrl = await GetLatestDownloadUrlAsync();
 
-				StatusService.Instance.SetProgress(25);
+				StatusService.Instance.SetProgress(30);
 				StatusService.Instance.UpdateStatus("Downloading Whisper Engine...");
-
 				await DownloadFileAsync(downloadUrl, zipPath);
 
-				StatusService.Instance.SetProgress(50);
+				StatusService.Instance.SetProgress(60);
 				StatusService.Instance.UpdateStatus("Extracting engine files...");
-
-				// Розпаковуємо все (exe + dll)
 				ExtractAllFilesFromZip(zipPath, _toolsDir);
 
-				StatusService.Instance.SetProgress(75);
+				StatusService.Instance.SetProgress(100);
 				StatusService.Instance.UpdateStatus("Engine installed successfully.");
 			}
 			catch (Exception ex)
@@ -115,33 +141,41 @@ namespace SpeechMaster.Services
 			}
 		}
 
-		public async Task EnsureModelExistsAsync(string modelName = DefaultModelName)
+		/// <summary>
+		/// Завантажує обрану модель, якщо її немає.
+		/// </summary>
+		public async Task EnsureModelExistsAsync(WhisperModelType modelType)
 		{
-			string modelFolder = Path.Combine(_baseDir, "Models");
-			string modelPath = Path.Combine(modelFolder, modelName);
+			if (!Directory.Exists(_modelsDir)) Directory.CreateDirectory(_modelsDir);
 
-			if (!Directory.Exists(modelFolder)) Directory.CreateDirectory(modelFolder);
+			string fileName = _modelFileNames[modelType];
+			string modelPath = GetModelPath(modelType);
 
 			if (File.Exists(modelPath))
 			{
-				StatusService.Instance.UpdateStatus("Model check: OK");
+				StatusService.Instance.UpdateStatus($"Model {fileName} is ready.");
 				return;
 			}
 
-			StatusService.Instance.UpdateStatus($"Downloading Model: {modelName}...");
+			StatusService.Instance.UpdateStatus($"Downloading Model: {fileName}...");
+
+			// Скидаємо прогрес перед завантаженням моделі
+			StatusService.Instance.SetProgress(0);
+
 			try
 			{
-				await DownloadFileAsync($"{ModelBaseUrl}{modelName}", modelPath);
-				StatusService.Instance.UpdateStatus($"Model {modelName} ready.");
+				string url = $"{ModelBaseUrl}{fileName}";
+				await DownloadFileAsync(url, modelPath);
+				StatusService.Instance.UpdateStatus($"Model {fileName} downloaded.");
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
 				if (File.Exists(modelPath)) File.Delete(modelPath);
 				throw;
 			}
 		}
 
-		// --- Private Helpers ---
+		// --- Private Helpers (залишились майже без змін) ---
 
 		private void ExtractAllFilesFromZip(string zipPath, string targetDirectory)
 		{
@@ -151,7 +185,6 @@ namespace SpeechMaster.Services
 				{
 					if (string.IsNullOrEmpty(entry.Name)) continue;
 
-					// Розпаковуємо exe та dll, ігноруючи структуру папок
 					if (entry.FullName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
 						entry.FullName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
 					{
@@ -163,7 +196,7 @@ namespace SpeechMaster.Services
 
 			if (!File.Exists(Path.Combine(targetDirectory, "whisper-cli.exe")))
 			{
-				throw new FileNotFoundException("Critical file 'whisper-cli.exe' was not found in the downloaded archive.");
+				throw new FileNotFoundException("Critical file 'whisper-cli.exe' not found.");
 			}
 		}
 
@@ -171,6 +204,12 @@ namespace SpeechMaster.Services
 		{
 			try
 			{
+				// Додаємо User-Agent, бо GitHub API вимагає його
+				if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
+				{
+					_httpClient.DefaultRequestHeaders.Add("User-Agent", "SpeechMaster-Client");
+				}
+
 				string jsonResponse = await _httpClient.GetStringAsync(RepoApiUrl);
 				using (JsonDocument doc = JsonDocument.Parse(jsonResponse))
 				{
@@ -179,6 +218,7 @@ namespace SpeechMaster.Services
 						foreach (JsonElement asset in assets.EnumerateArray())
 						{
 							string name = asset.GetProperty("name").GetString() ?? "";
+							// Шукаємо версію для Windows x64 (bin-x64)
 							if (name.Contains("bin-x64", StringComparison.OrdinalIgnoreCase) &&
 								name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
 							{
@@ -187,7 +227,7 @@ namespace SpeechMaster.Services
 						}
 					}
 				}
-				throw new Exception("Could not find a 'bin-x64' zip asset in the latest GitHub release.");
+				throw new Exception("Could not find 'bin-x64' zip asset.");
 			}
 			catch (Exception ex)
 			{
@@ -214,7 +254,7 @@ namespace SpeechMaster.Services
 					{
 						await fileStream.WriteAsync(buffer, 0, bytesRead);
 						totalRead += bytesRead;
-						if (totalBytes != -1 && totalRead % (1024 * 100) == 0)
+						if (totalBytes != -1) // Оновлюємо прогрес, тільки якщо знаємо розмір
 						{
 							double progress = Math.Round((double)totalRead / totalBytes * 100, 0);
 							StatusService.Instance.SetProgress(progress);
